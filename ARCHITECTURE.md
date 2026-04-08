@@ -2,27 +2,28 @@
 
 ## Short Product Summary
 
-Record Player is a personal-history recording web app where each person is an album and each memory is a track. The MVP prioritizes calm browser UX, direct ownership of files in Google Drive, and a simple client-only architecture.
+Pershie is a personal-history recording web app where each person is an album and each memory is a track. The MVP prioritizes calm browser UX, direct ownership of files in Google Drive, and a simple client-only architecture.
 
 ## Technical Architecture
 
 - UI: Expo Router screens rendered through React Native Web.
-- Navigation: Expo Router with tabs for Library and Record, plus stack screens and modals for Tracks and details.
+- Navigation: Expo Router with tabs for Library, Record, and Help, plus stack screens and modals for tracks and details.
 - Auth: Google OAuth handled in-browser with `expo-auth-session`.
+- Import UX: Google Picker lets the user explicitly choose an existing Drive folder.
 - Persistence: Google Drive folders and JSON metadata files.
-- Local storage: `localStorage` stores cached library data and session state.
+- Local storage: `localStorage` stores cached library data, pending uploads, session state, and the selected library configuration.
 - State: React context keeps the architecture small and avoids adding another state library for v1.
 
 ## Why No Backend
 
-The MVP can work client-side because Google Drive already provides persistence, file ownership, and API access. A backend would add cost, deployment, token-management complexity, and a second source of truth. If production Google auth policy or long-lived refresh behavior becomes limiting later, the smallest next step would be a tiny token broker rather than a full application backend.
+The MVP can work client-side because Google Drive already provides persistence, file ownership, and API access. A backend would add cost, deployment complexity, token-management work, and a second source of truth. If production Google auth policy or long-lived refresh behavior becomes limiting later, the smallest next step would be a tiny token broker rather than a full application backend.
 
 ## Folder Strategy
 
-The requested baseline suggested separate notes and transcript folders. For v1, this implementation slightly simplifies that shape:
+The app keeps Drive readable while allowing a user-selected base folder name:
 
 ```text
-Record Player/
+{your-base-folder}/
   albums/
     {person-slug-id}/
       metadata.json
@@ -37,7 +38,13 @@ Reasons:
 - Audio and metadata stay adjacent.
 - External repairs are easier because one JSON file explains one audio file.
 - Notes, transcript, tags, and image references stay in one place.
-- The Drive tree stays readable without turning into many tiny directories.
+- Users are not forced to keep the app under a hardcoded `Pershie/` root.
+
+## Import Behavior
+
+- New libraries can be created under any top-level folder name.
+- Existing libraries can be reconnected during sign-in by opening Google Picker and selecting the desired Drive folder.
+- This is a better fit than blind Drive discovery when the app intentionally uses the narrower `drive.file` scope.
 
 ## Metadata Schema
 
@@ -80,9 +87,11 @@ Track metadata:
 - Missing metadata should not hide recordings; instead, the UI shows warnings and falls back to filename or Drive timestamps.
 - Offline support is intentionally minimal. Reads may use cached library data, but uploads and metadata edits require network access.
 
-## Tradeoffs
+## Deployment Notes
 
-- `drive.file` is narrower and safer, but it is less ideal for discovering arbitrary pre-existing Drive trees the app did not create.
-- React context is simpler than a dedicated state library, but it is less specialized if the app grows significantly.
-- ISO date editing in the track modal is pragmatic for v1, but not the final UX.
-- The web app intentionally avoids a background upload queue, since browser blobs and session lifetimes are less durable than native app storage.
+- Production hosting is planned for `pershie.com`.
+- Vercel project ID is `prj_QmfDhx8HJ8ZU0s9tJbZJXDLwN50j`.
+- Vercel team slug is `chev424-5579s-projects`.
+- Vercel should provide the static hosting and environment-variable management for `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`.
+- Vercel should also provide `EXPO_PUBLIC_GOOGLE_API_KEY` and `EXPO_PUBLIC_GOOGLE_CLOUD_PROJECT_NUMBER` for Google Picker.
+- GitHub Actions are useful for CI validation, but Vercel's Git integration can handle the actual deploy pipeline.

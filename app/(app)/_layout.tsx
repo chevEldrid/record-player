@@ -25,6 +25,7 @@ export default function AppLayout() {
       }}>
       <Tabs.Screen name="library" options={{ title: 'Library', tabBarLabel: 'Library' }} />
       <Tabs.Screen name="record" options={{ title: 'Record', tabBarLabel: 'Record' }} />
+      <Tabs.Screen name="help" options={{ title: 'Help', tabBarLabel: 'Help' }} />
     </Tabs>
   );
 }

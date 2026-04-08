@@ -5,12 +5,18 @@ export type GoogleSession = {
   tokenType?: string;
   expiresAt?: number;
   scopes: string[];
+  libraryConfig?: LibraryConfig;
   user: {
     id?: string;
     email?: string;
     name?: string;
     picture?: string;
   };
+};
+
+export type LibraryConfig = {
+  rootFolderName: string;
+  rootFolderId?: string;
 };
 
 export type DrivePointers = {

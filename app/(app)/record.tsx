@@ -46,7 +46,7 @@ export default function RecordScreen() {
   async function startRecording() {
     const permission = await Audio.requestPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Microphone needed', 'Record Player needs microphone access to record.');
+      Alert.alert('Microphone needed', 'Pershie needs microphone access to record.');
       return;
     }
 

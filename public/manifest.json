@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Record Player",
-  "short_name": "Record Player",
-  "description": "Preserve personal-history audio in a browser-first record collection backed by Google Drive.",
+  "name": "Pershie",
+  "short_name": "Pershie",
+  "description": "Preserve personal-history audio in a browser-first collection backed by Google Drive.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

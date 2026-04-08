@@ -19,7 +19,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export default function LibraryScreen() {
   const navigation = useNavigation();
   const router = useRouter();
-  const { albums, error, isSyncing, refreshLibrary, status } = useAppData();
+  const { albums, error, isSyncing, refreshLibrary, rootFolders, status } = useAppData();
   const { session, signOut } = useAuth();
 
   useLayoutEffect(() => {
@@ -41,6 +41,10 @@ export default function LibraryScreen() {
           <Text style={styles.title}>Your Library</Text>
           <Text style={styles.subtitle}>
             {session?.user.name ?? session?.user.email ?? 'Signed in'}
+          </Text>
+          <Text style={styles.libraryPath}>
+            {session?.libraryConfig?.rootFolderName ?? 'Pershie'}
+            {rootFolders ? '/albums' : ''}
           </Text>
         </View>
         <PrimaryButton label="Sign out" onPress={signOut} variant="secondary" />
@@ -100,6 +104,11 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 14,
     marginTop: 4,
+  },
+  libraryPath: {
+    color: colors.accent,
+    fontSize: 12,
+    marginTop: 6,
   },
   syncing: {
     color: colors.accent,
