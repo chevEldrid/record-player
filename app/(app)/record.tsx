@@ -31,6 +31,7 @@ export default function RecordScreen() {
   const [recordedMimeType, setRecordedMimeType] = useState('audio/m4a');
   const [saving, setSaving] = useState(false);
   const [selectorOpen, setSelectorOpen] = useState(false);
+  const [audioLevel, setAudioLevel] = useState(0);
 
   useEffect(() => {
     if (!selectedAlbumId && albums[0]) {
@@ -56,7 +57,25 @@ export default function RecordScreen() {
     });
 
     const nextRecording = new Audio.Recording();
-    await nextRecording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+    nextRecording.setProgressUpdateInterval(120);
+    nextRecording.setOnRecordingStatusUpdate((status) => {
+      if (!status.isRecording) {
+        setAudioLevel(0);
+        return;
+      }
+
+      if (typeof status.metering === 'number') {
+        const normalized = Math.min(Math.max((status.metering + 60) / 60, 0), 1);
+        setAudioLevel(normalized);
+        return;
+      }
+
+      setAudioLevel((current) => (current > 0.12 ? 0.06 : 0.18));
+    });
+    await nextRecording.prepareToRecordAsync({
+      ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
+      isMeteringEnabled: true,
+    });
     await nextRecording.startAsync();
     setRecordedUri(undefined);
     setRecordedAt(undefined);
@@ -71,6 +90,7 @@ export default function RecordScreen() {
     await recording.stopAndUnloadAsync();
     const uri = recording.getURI();
     setRecording(null);
+    setAudioLevel(0);
     setRecordedUri(uri ?? undefined);
     setRecordedAt(new Date().toISOString());
     setRecordedMimeType(Platform.OS === 'web' ? 'audio/webm' : 'audio/m4a');
@@ -131,64 +151,57 @@ export default function RecordScreen() {
   }
 
   return (
-    <ScreenShell scroll>
-      <Text style={styles.title}>Record</Text>
-      <Text style={styles.subtitle}>
-        Capture a new memory or bring in an existing audio file.
-      </Text>
-
+    <ScreenShell bottomNav scroll>
       {albums.length ? (
         <>
-          <Pressable onPress={() => setSelectorOpen(true)} style={styles.albumPicker}>
-            <Text style={styles.albumPickerLabel}>Album</Text>
-            <Text style={styles.albumPickerValue}>
-              {selectedAlbum?.name ?? 'Choose an album'}
-            </Text>
-          </Pressable>
+          <View style={styles.header}>
+            <Pressable onPress={() => setSelectorOpen(true)} style={styles.albumPicker}>
+              <Text style={styles.albumPickerLabel}>Save to</Text>
+              <Text numberOfLines={1} style={styles.albumPickerValue}>
+                {selectedAlbum?.name ?? 'Choose album'}
+              </Text>
+            </Pressable>
+          </View>
 
-          <LabeledField
-            label="Track title"
-            onChangeText={setTitle}
-            placeholder="Optional. Defaults to recording date."
-            value={title}
-          />
-
-          <View style={styles.recordPanel}>
-            <Text style={styles.recordStatus}>
-              {recording
-                ? 'Recording in progress'
-                : recordedUri
-                  ? 'Ready to save'
-                  : 'Tap the record button to begin'}
-            </Text>
+          <View style={styles.hero}>
             <Pressable
               onPress={recording ? stopRecording : startRecording}
               style={({ pressed }) => [
                 styles.recordButton,
+                recording && styles.recordButtonActive,
                 pressed && styles.recordButtonPressed,
               ]}>
-              <View style={[styles.recordButtonInner, recording && styles.recordingLive]} />
+              <View
+                style={[
+                  styles.recordButtonCore,
+                  recording && styles.recordButtonCoreLive,
+                  recording && {
+                    transform: [{ scale: 1 + audioLevel * 0.18 }],
+                    opacity: 0.75 + audioLevel * 0.25,
+                  },
+                ]}
+              />
             </Pressable>
             <Text style={styles.recordCaption}>
-              {recording
-                ? 'Tap again to stop'
-                : Platform.OS === 'web'
-                  ? 'Browser uploads require a network connection.'
-                  : 'Works offline. Unsynced recordings stay on device until upload succeeds.'}
+              {recording ? 'Tap to stop' : recordedUri ? 'Ready to save' : 'Tap to record'}
             </Text>
           </View>
 
-          <PrimaryButton label="Upload Existing Audio" onPress={pickAudioFile} variant="secondary" />
+          <View style={styles.actions}>
+            <PrimaryButton label="Upload Audio" onPress={pickAudioFile} variant="secondary" />
+          </View>
 
           {recordedUri ? (
             <View style={styles.saveCard}>
-              <Text style={styles.saveTitle}>Current track</Text>
-              <Text style={styles.saveBody}>
-                {title.trim() || 'Untitled recording'}{'\n'}
-                {formatDisplayDate(recordedAt)}
-              </Text>
+              <LabeledField
+                label="Track title"
+                onChangeText={setTitle}
+                placeholder="Optional. Defaults to recording date."
+                value={title}
+              />
+              <Text style={styles.saveMeta}>{formatDisplayDate(recordedAt)}</Text>
               <PrimaryButton
-                label="Save to Album"
+                label="Save Recording"
                 loading={saving}
                 onPress={() => saveCurrentRecording(recordedUri, recordedMimeType)}
               />
@@ -203,7 +216,7 @@ export default function RecordScreen() {
         </>
       ) : (
         <EmptyState
-          body="Create an album in the Library tab before recording."
+          body="Create an album from the library before recording."
           title="No albums available"
         />
       )}
@@ -223,7 +236,11 @@ export default function RecordScreen() {
                 <Text style={styles.modalOptionText}>{album.name}</Text>
               </Pressable>
             ))}
-            <PrimaryButton label="Close" onPress={() => setSelectorOpen(false)} variant="secondary" />
+            <PrimaryButton
+              label="Close"
+              onPress={() => setSelectorOpen(false)}
+              variant="secondary"
+            />
           </View>
         </View>
       </Modal>
@@ -232,108 +249,90 @@ export default function RecordScreen() {
 }
 
 const styles = StyleSheet.create({
-  title: {
-    color: colors.text,
-    fontSize: 28,
-    fontWeight: '800',
-  },
-  subtitle: {
-    color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: spacing.lg,
-    marginTop: spacing.xs,
+  header: {
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.md,
   },
   albumPicker: {
     backgroundColor: colors.card,
     borderColor: colors.border,
     borderRadius: radii.lg,
     borderWidth: 1,
-    marginBottom: spacing.md,
     padding: spacing.md,
   },
   albumPickerLabel: {
     color: colors.textMuted,
     fontSize: 12,
-    marginBottom: 4,
     textTransform: 'uppercase',
   },
   albumPickerValue: {
     color: colors.text,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  recordPanel: {
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    borderColor: colors.border,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    marginVertical: spacing.lg,
-    padding: spacing.xl,
-  },
-  recordStatus: {
-    color: colors.text,
     fontSize: 18,
     fontWeight: '700',
+    marginTop: 4,
+  },
+  hero: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xxl,
   },
   recordButton: {
     alignItems: 'center',
-    backgroundColor: '#FCE2DC',
+    backgroundColor: '#351A16',
     borderRadius: 999,
-    height: 170,
+    height: 188,
     justifyContent: 'center',
-    marginVertical: spacing.lg,
-    width: 170,
+    width: 188,
+  },
+  recordButtonActive: {
+    backgroundColor: '#4B1B16',
   },
   recordButtonPressed: {
     transform: [{ scale: 0.98 }],
   },
-  recordButtonInner: {
-    backgroundColor: colors.danger,
+  recordButtonCore: {
+    backgroundColor: '#D3372F',
     borderRadius: 999,
     height: 96,
     width: 96,
   },
-  recordingLive: {
-    borderRadius: 24,
-    height: 70,
-    width: 70,
+  recordButtonCoreLive: {
+    borderRadius: 28,
   },
   recordCaption: {
-    color: colors.textMuted,
-    fontSize: 13,
-    lineHeight: 20,
-    textAlign: 'center',
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: spacing.lg,
+  },
+  actions: {
+    marginTop: spacing.xl,
+    paddingHorizontal: spacing.md,
   },
   saveCard: {
     backgroundColor: colors.card,
     borderColor: colors.border,
     borderRadius: radii.lg,
     borderWidth: 1,
-    gap: spacing.sm,
+    gap: spacing.md,
+    marginHorizontal: spacing.md,
     marginTop: spacing.lg,
     padding: spacing.lg,
   },
-  saveTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  saveBody: {
+  saveMeta: {
     color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 22,
+    fontSize: 13,
   },
   pendingNote: {
     color: colors.accent,
     fontSize: 13,
     marginTop: spacing.md,
-    textAlign: 'center',
+    paddingHorizontal: spacing.md,
   },
   modalBackdrop: {
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.32)',
+    backgroundColor: 'rgba(17, 11, 7, 0.45)',
     flex: 1,
     justifyContent: 'center',
     padding: spacing.md,
@@ -348,8 +347,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     color: colors.text,
     fontSize: 18,
-    fontWeight: '700',
-    marginBottom: spacing.xs,
+    fontWeight: '800',
   },
   modalOption: {
     backgroundColor: colors.card,
@@ -360,7 +358,7 @@ const styles = StyleSheet.create({
   },
   modalOptionText: {
     color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

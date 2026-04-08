@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, radii, spacing } from '@/constants/theme';
 import type { Track } from '@/domain/models';
-import { formatDisplayDate } from '@/utils/date';
+import { formatDisplayDateOnly } from '@/utils/date';
 import { WarningBadge } from '@/components/WarningBadge';
 
 export function TrackListItem({
@@ -14,10 +14,12 @@ export function TrackListItem({
 }) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
-      <View style={styles.timelineDot} />
+      <View style={styles.timelineColumn}>
+        <View style={styles.timelineDot} />
+      </View>
       <View style={styles.card}>
         <Text style={styles.title}>{track.title}</Text>
-        <Text style={styles.date}>{formatDisplayDate(track.recordedAt)}</Text>
+        <Text style={styles.date}>{formatDisplayDateOnly(track.recordedAt)}</Text>
         {track.warnings.length ? (
           <View style={styles.warningRow}>
             {track.warnings.slice(0, 2).map((warning) => (
@@ -38,6 +40,11 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.92,
+  },
+  timelineColumn: {
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    width: 16,
   },
   timelineDot: {
     backgroundColor: colors.accent,

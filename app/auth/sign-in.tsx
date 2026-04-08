@@ -20,6 +20,7 @@ import { LabeledField } from '@/components/LabeledField';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenShell } from '@/components/ScreenShell';
 import { googleScopes } from '@/services/googleAuth';
+import { openGoogleFolderPicker, type PickedFolder } from '@/services/googlePicker';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -31,125 +32,8 @@ type PendingTokens = {
   expiresIn?: number;
 };
 
-type PickedFolder = {
-  id: string;
-  name: string;
-};
-
-declare global {
-  interface Window {
-    gapi?: {
-      load: (name: string, callback: { callback: () => void }) => void;
-    };
-    google?: {
-      picker: {
-        Action: { CANCEL: string; PICKED: string };
-        DocsView: new (viewId: unknown) => {
-          setIncludeFolders: (enabled: boolean) => void;
-          setMimeTypes: (mimeTypes: string) => void;
-          setSelectFolderEnabled: (enabled: boolean) => void;
-        };
-        DocsViewMode: { LIST: unknown };
-        Document: { ID: string; NAME: string };
-        PickerBuilder: new () => {
-          addView: (view: unknown) => any;
-          enableFeature: (feature: unknown) => any;
-          hideTitleBar: () => any;
-          setAppId: (appId: string) => any;
-          setCallback: (callback: (data: Record<string, unknown>) => void) => any;
-          setDeveloperKey: (developerKey: string) => any;
-          setOAuthToken: (token: string) => any;
-          build: () => { setVisible: (visible: boolean) => void };
-        };
-        Response: { ACTION: string; DOCUMENTS: string };
-        Feature: { NAV_HIDDEN: unknown; MULTISELECT_ENABLED: unknown };
-        ViewId: { FOLDERS: unknown };
-      };
-    };
-  }
-}
-
 function normalizeRootFolderName(value: string) {
   return value.trim() || DRIVE_ROOT_NAME;
-}
-
-async function loadGooglePickerApi() {
-  if (typeof window === 'undefined') {
-    throw new Error('Google Picker is only available in the web app.');
-  }
-
-  if (!document.querySelector('script[data-google-api-script="true"]')) {
-    await new Promise<void>((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'https://apis.google.com/js/api.js';
-      script.async = true;
-      script.dataset.googleApiScript = 'true';
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Failed to load Google Picker.'));
-      document.head.appendChild(script);
-    });
-  }
-
-  if (!window.gapi) {
-    throw new Error('Google Picker did not initialize correctly.');
-  }
-
-  await new Promise<void>((resolve) => {
-    window.gapi!.load('picker', {
-      callback: resolve,
-    });
-  });
-}
-
-async function openGoogleFolderPicker(params: {
-  accessToken: string;
-  apiKey: string;
-  appId: string;
-}) {
-  await loadGooglePickerApi();
-
-  const picker = window.google?.picker;
-  if (!picker) {
-    throw new Error('Google Picker is unavailable.');
-  }
-
-  return new Promise<PickedFolder | null>((resolve) => {
-    const view = new picker.DocsView(picker.ViewId.FOLDERS);
-    view.setIncludeFolders(true);
-    view.setSelectFolderEnabled(true);
-    view.setMimeTypes('application/vnd.google-apps.folder');
-
-    new picker.PickerBuilder()
-      .addView(view)
-      .enableFeature(picker.Feature.NAV_HIDDEN)
-      .hideTitleBar()
-      .setAppId(params.appId)
-      .setDeveloperKey(params.apiKey)
-      .setOAuthToken(params.accessToken)
-      .setCallback((data: Record<string, unknown>) => {
-        const action = data[picker.Response.ACTION];
-
-        if (action === picker.Action.PICKED) {
-          const docs = data[picker.Response.DOCUMENTS] as Record<string, string>[] | undefined;
-          const first = docs?.[0];
-          resolve(
-            first
-              ? {
-                  id: first[picker.Document.ID],
-                  name: first[picker.Document.NAME],
-                }
-              : null
-          );
-          return;
-        }
-
-        if (action === picker.Action.CANCEL) {
-          resolve(null);
-        }
-      })
-      .build()
-      .setVisible(true);
-  });
 }
 
 export default function SignInScreen() {
@@ -209,7 +93,7 @@ export default function SignInScreen() {
         return;
       }
 
-      const tokens: PendingTokens = authTokens;
+      const tokens = authTokens;
       setWorking(true);
 
       try {
@@ -412,7 +296,7 @@ export default function SignInScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Imported folder</Text>
           {pickedFolder ? (
-            <View style={styles.libraryOptionActive}>
+            <View style={styles.libraryOption}>
               <Text style={styles.libraryOptionTitle}>{pickedFolder.name}</Text>
               <Text style={styles.libraryOptionBody}>
                 {pickedFolder.name}/{DRIVE_ALBUMS_FOLDER_NAME}
@@ -459,15 +343,6 @@ export default function SignInScreen() {
           </View>
         </View>
       ) : null}
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Need help?</Text>
-        <Text style={styles.cardBody}>
-          After sign-in you’ll have a Help tab with a quick walkthrough for setting
-          up your library, adding albums, recording tracks, and reconnecting to an
-          existing Drive folder later.
-        </Text>
-      </View>
 
       <View style={styles.signInSection}>
         {!clientId ? (
@@ -595,8 +470,8 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   modeCardActive: {
-    borderColor: colors.accent,
     backgroundColor: colors.accentSoft,
+    borderColor: colors.accent,
   },
   modeTitle: {
     color: colors.text,
@@ -608,7 +483,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
   },
-  libraryOptionActive: {
+  libraryOption: {
     backgroundColor: colors.accentSoft,
     borderColor: colors.accent,
     borderRadius: radii.md,

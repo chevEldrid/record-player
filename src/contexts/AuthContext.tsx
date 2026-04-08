@@ -20,6 +20,7 @@ type AuthContextValue = {
     expiresIn?: number;
     libraryConfig?: LibraryConfig;
   }) => Promise<void>;
+  updateLibraryConfig: (libraryConfig: LibraryConfig) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -100,6 +101,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(nextSession);
         setStatus('signed-in');
         setError(undefined);
+      },
+      async updateLibraryConfig(libraryConfig) {
+        if (!session) {
+          throw new Error('Sign in first.');
+        }
+
+        const nextSession: GoogleSession = {
+          ...session,
+          libraryConfig,
+        };
+
+        await writeStoredSession(nextSession);
+        setSession(nextSession);
       },
       async signOut() {
         await writeStoredSession(null);

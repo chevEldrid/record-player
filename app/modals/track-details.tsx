@@ -2,16 +2,16 @@ import * as ImagePicker from 'expo-image-picker';
 import { Audio } from 'expo-av';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DriveImage } from '@/components/DriveImage';
 import { LabeledField } from '@/components/LabeledField';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenShell } from '@/components/ScreenShell';
 import { WarningBadge } from '@/components/WarningBadge';
-import { colors, spacing } from '@/constants/theme';
+import { colors, radii, spacing } from '@/constants/theme';
 import { useAppData } from '@/contexts/AppDataContext';
-import { formatDisplayDate } from '@/utils/date';
+import { formatDisplayDateOnly, toDateInputValue } from '@/utils/date';
 
 export default function TrackDetailsModal() {
   const { albumId, trackId } = useLocalSearchParams<{ albumId: string; trackId: string }>();
@@ -20,7 +20,7 @@ export default function TrackDetailsModal() {
   const track = album?.tracks.find((candidate) => candidate.id === trackId);
 
   const [title, setTitle] = useState(track?.title ?? '');
-  const [recordedAt, setRecordedAt] = useState(track?.recordedAt ?? new Date().toISOString());
+  const [recordedAt, setRecordedAt] = useState(toDateInputValue(track?.recordedAt));
   const [tagsText, setTagsText] = useState(track?.tags.join(', ') ?? '');
   const [notes, setNotes] = useState(track?.notes ?? '');
   const [transcript, setTranscript] = useState(track?.transcript ?? '');
@@ -103,7 +103,7 @@ export default function TrackDetailsModal() {
     try {
       await updateTrack(currentAlbum.id, currentTrack.id, {
         title,
-        recordedAt,
+        recordedAt: recordedAt || toDateInputValue(currentTrack.recordedAt),
         tags: tagsText
           .split(',')
           .map((item) => item.trim())
@@ -113,7 +113,7 @@ export default function TrackDetailsModal() {
         imageUri:
           imageUri && !imageUri.startsWith('drive://') ? imageUri : undefined,
       });
-      Alert.alert('Saved', 'Track metadata updated.');
+      Alert.alert('Saved', 'Track updated.');
     } catch (error) {
       Alert.alert(
         'Could not save',
@@ -127,11 +127,14 @@ export default function TrackDetailsModal() {
   return (
     <ScreenShell scroll>
       <Text style={styles.title}>{track.title}</Text>
-      <Text style={styles.subtitle}>{formatDisplayDate(currentTrack.recordedAt)}</Text>
+      <Text style={styles.subtitle}>{formatDisplayDateOnly(currentTrack.recordedAt)}</Text>
 
-      <View style={styles.imageWrap}>
-        <DriveImage label={currentTrack.title} size={128} uri={imageUri} />
-      </View>
+      <Pressable onPress={togglePlayback} style={styles.heroArt}>
+        <DriveImage label={currentTrack.title} size={180} uri={imageUri} />
+        <View style={styles.playOverlay}>
+          <Text style={styles.playIcon}>{isPlaying ? 'II' : '▶'}</Text>
+        </View>
+      </Pressable>
 
       {warnings.length ? (
         <View style={styles.warningWrap}>
@@ -141,18 +144,13 @@ export default function TrackDetailsModal() {
         </View>
       ) : null}
 
-      <PrimaryButton
-        label={isPlaying ? 'Pause Audio' : 'Play Audio'}
-        onPress={togglePlayback}
-        variant="secondary"
-      />
       <PrimaryButton label="Change Image" onPress={chooseImage} variant="secondary" />
 
       <LabeledField label="Title" onChangeText={setTitle} value={title} />
       <LabeledField
-        helper="ISO date string for the MVP. Example: 2026-03-30T18:15:00.000Z"
-        label="Recorded at"
+        label="Date"
         onChangeText={setRecordedAt}
+        placeholder="2026-04-08"
         value={recordedAt}
       />
       <LabeledField
@@ -170,7 +168,8 @@ export default function TrackDetailsModal() {
         value={transcript}
       />
 
-      <PrimaryButton label="Save Metadata" loading={saving} onPress={saveChanges} />
+      <View style={styles.saveSpacer} />
+      <PrimaryButton label="Save" loading={saving} onPress={saveChanges} />
     </ScreenShell>
   );
 }
@@ -187,14 +186,35 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     marginTop: spacing.xs,
   },
-  imageWrap: {
+  heroArt: {
     alignItems: 'center',
+    alignSelf: 'center',
+    justifyContent: 'center',
     marginBottom: spacing.lg,
+    position: 'relative',
+  },
+  playOverlay: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(33, 26, 20, 0.24)',
+    borderRadius: 999,
+    height: 62,
+    justifyContent: 'center',
+    position: 'absolute',
+    width: 62,
+  },
+  playIcon: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '700',
+    marginLeft: 4,
   },
   warningWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.xs,
     marginBottom: spacing.lg,
+  },
+  saveSpacer: {
+    height: spacing.lg,
   },
 });
