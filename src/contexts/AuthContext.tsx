@@ -4,11 +4,9 @@ import {
   fetchGoogleUser,
   isSessionExpired,
   readStoredSession,
-  refreshGoogleSession,
   writeStoredSession,
 } from '@/services/googleAuth';
 import type { GoogleSession } from '@/domain/models';
-import { getGoogleClientId } from '@/constants/config';
 
 type AuthContextValue = {
   session: GoogleSession | null;
@@ -37,7 +35,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async function bootstrap() {
       try {
         const stored = await readStoredSession();
-        const clientId = getGoogleClientId();
 
         if (!stored) {
           if (!cancelled) {
@@ -46,14 +43,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        let resolved = stored;
-        if (clientId && isSessionExpired(stored) && stored.refreshToken) {
-          resolved = await refreshGoogleSession(stored, clientId);
-          await writeStoredSession(resolved);
+        if (isSessionExpired(stored)) {
+          await writeStoredSession(null);
+          if (!cancelled) {
+            setSession(null);
+            setStatus('signed-out');
+          }
+          return;
         }
 
         if (!cancelled) {
-          setSession(resolved);
+          setSession(stored);
           setStatus('signed-in');
         }
       } catch (bootstrapError) {

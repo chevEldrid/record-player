@@ -1,5 +1,3 @@
-import { Platform } from 'react-native';
-
 export const APP_NAME = 'Record Player';
 export const DRIVE_ROOT_NAME = 'Record Player';
 export const DRIVE_ALBUMS_FOLDER_NAME = 'albums';
@@ -14,17 +12,5 @@ export const GOOGLE_DISCOVERY = {
 };
 
 export function getGoogleClientId() {
-  if (Platform.OS === 'ios') {
-    return process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
-  }
-
-  if (Platform.OS === 'android') {
-    return process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
-  }
-
-  if (Platform.OS === 'web') {
-    return process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
-  }
-
-  return process.env.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID;
+  return process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 }

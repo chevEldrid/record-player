@@ -2,15 +2,15 @@
 
 ## Short Product Summary
 
-Record Player is a personal-history recording app where each person is an album and each memory is a track. The MVP prioritizes calm, minimal mobile UX, direct ownership of files in Google Drive, and just enough offline support to avoid losing recordings when the network drops.
+Record Player is a personal-history recording web app where each person is an album and each memory is a track. The MVP prioritizes calm browser UX, direct ownership of files in Google Drive, and a simple client-only architecture.
 
 ## Technical Architecture
 
-- UI: Expo React Native screens and reusable components.
+- UI: Expo Router screens rendered through React Native Web.
 - Navigation: Expo Router with tabs for Library and Record, plus stack screens and modals for Tracks and details.
-- Auth: Google OAuth handled on-device with `expo-auth-session`.
+- Auth: Google OAuth handled in-browser with `expo-auth-session`.
 - Persistence: Google Drive folders and JSON metadata files.
-- Offline: App document directory stores cached library data plus pending uploads.
+- Local storage: `localStorage` stores cached library data and session state.
 - State: React context keeps the architecture small and avoids adding another state library for v1.
 
 ## Why No Backend
@@ -78,11 +78,11 @@ Track metadata:
 - The app creates the Drive structure and primarily manages files it created.
 - Users may edit metadata or move folders externally, and the app should continue working as long as the structure is still recognizable.
 - Missing metadata should not hide recordings; instead, the UI shows warnings and falls back to filename or Drive timestamps.
-- Offline support is only for capture and deferred upload, not full offline editing or conflict resolution.
+- Offline support is intentionally minimal. Reads may use cached library data, but uploads and metadata edits require network access.
 
 ## Tradeoffs
 
 - `drive.file` is narrower and safer, but it is less ideal for discovering arbitrary pre-existing Drive trees the app did not create.
 - React context is simpler than a dedicated state library, but it is less specialized if the app grows significantly.
 - ISO date editing in the track modal is pragmatic for v1, but not the final UX.
-- The offline queue is intentionally lean and does not attempt sophisticated retry policy, deduping, or conflict handling.
+- The web app intentionally avoids a background upload queue, since browser blobs and session lifetimes are less durable than native app storage.

@@ -1,5 +1,3 @@
-import * as FileSystem from 'expo-file-system/legacy';
-
 import {
   APP_SCHEMA_VERSION,
   DRIVE_ALBUMS_FOLDER_NAME,
@@ -114,28 +112,6 @@ function makeTrackBaseName(title: string, recordedAt: string) {
 async function blobFromUri(uri: string) {
   const response = await fetch(uri);
   return response.blob();
-}
-
-async function downloadBlobToLocalPath(blob: Blob, path: string) {
-  const reader = new FileReader();
-
-  const base64 = await new Promise<string>((resolve, reject) => {
-    reader.onloadend = () => {
-      const result = reader.result;
-      if (typeof result !== 'string') {
-        reject(new Error('Failed to convert blob to base64.'));
-        return;
-      }
-
-      resolve(result.split(',')[1] ?? '');
-    };
-    reader.onerror = () => reject(reader.error ?? new Error('Blob read failed.'));
-    reader.readAsDataURL(blob);
-  });
-
-  await FileSystem.writeAsStringAsync(path, base64, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
 }
 
 export class DriveRepository {
@@ -375,10 +351,8 @@ export class DriveRepository {
     return this.loadAlbumFromFolder(match);
   }
 
-  async downloadDriveFileToLocal(fileId: string, destinationPath: string) {
-    const blob = await this.api.downloadBinary(fileId);
-    await downloadBlobToLocalPath(blob, destinationPath);
-    return destinationPath;
+  async downloadDriveFile(fileId: string) {
+    return this.api.downloadBinary(fileId);
   }
 
   private async uploadBinaryFile(params: {

@@ -2,36 +2,19 @@
   "expo": {
     "name": "Record Player",
     "slug": "record-player",
-    "scheme": "recordplayer",
+    "icon": "./assets/icon.png",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "plugins": [
-      "expo-router",
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "Allow Record Player to choose album and track images.",
-          "cameraPermission": "Allow Record Player to take a photo for an album or track.",
-          "microphonePermission": "Allow Record Player to access your microphone."
-        }
-      ]
+      "expo-router"
     ],
     "experiments": {
       "typedRoutes": true
     },
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.recordplayer.app",
-      "infoPlist": {
-        "NSMicrophoneUsageDescription": "Allow Record Player to record conversations and memories."
-      }
-    },
-    "android": {
-      "package": "com.recordplayer.app"
-    },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "favicon": "./assets/icon.png"
     }
   }
 }

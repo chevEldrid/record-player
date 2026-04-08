@@ -9,73 +9,66 @@ import { colors, radii, spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenShell } from '@/components/ScreenShell';
-import { exchangeGoogleCode, googleScopes } from '@/services/googleAuth';
+import { googleScopes } from '@/services/googleAuth';
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function SignInScreen() {
   const clientId = getGoogleClientId();
   const redirectUri = AuthSession.makeRedirectUri({
-    scheme: 'recordplayer',
-    path: 'oauth',
+    path: 'auth/sign-in',
+    preferLocalhost: true,
   });
   const { finishSignIn, status, error } = useAuth();
   const [working, setWorking] = useState(false);
   const [authError, setAuthError] = useState<string>();
 
-  const [request, response, promptAsync] = AuthSession.useAuthRequest(
+  const [, response, promptAsync] = AuthSession.useAuthRequest(
     {
       clientId: clientId ?? 'missing-client-id',
-      responseType: AuthSession.ResponseType.Code,
+      responseType: AuthSession.ResponseType.Token,
       scopes: googleScopes,
       redirectUri,
-      usePKCE: true,
+      usePKCE: false,
       extraParams: {
-        access_type: 'offline',
         prompt: 'consent',
       },
     },
     GOOGLE_DISCOVERY
   );
+  const accessToken =
+    response?.type === 'success' ? response.params.access_token : undefined;
+  const expiresIn =
+    response?.type === 'success' && response.params.expires_in
+      ? Number(response.params.expires_in)
+      : undefined;
+  const tokenType =
+    response?.type === 'success' ? response.params.token_type : undefined;
+  const idToken =
+    response?.type === 'success' ? response.params.id_token : undefined;
 
   useEffect(() => {
-    const code = response?.type === 'success' ? response.params.code : undefined;
-    const codeVerifier = request?.codeVerifier;
-
-    if (!code || !clientId || !codeVerifier) {
+    if (!clientId) {
       return;
     }
-    const resolvedClientId = clientId;
-    const resolvedCode = code;
-    const resolvedCodeVerifier = codeVerifier;
 
     let cancelled = false;
 
     async function completeSignIn() {
       setWorking(true);
       try {
-        const tokenResponse = await exchangeGoogleCode({
-          clientId: resolvedClientId,
-          code: resolvedCode,
-          redirectUri,
-          codeVerifier: resolvedCodeVerifier,
-        });
-        const accessToken = tokenResponse.accessToken;
         if (!accessToken) {
-          throw new Error('Google sign-in did not return an access token.');
-        }
-
-        if (cancelled) {
           return;
         }
 
-        await finishSignIn({
-          accessToken,
-          refreshToken: tokenResponse.refreshToken,
-          idToken: tokenResponse.idToken,
-          tokenType: tokenResponse.tokenType,
-          expiresIn: tokenResponse.expiresIn,
-        });
+        if (!cancelled) {
+          await finishSignIn({
+            accessToken,
+            idToken,
+            tokenType,
+            expiresIn,
+          });
+        }
       } catch (signInError) {
         if (!cancelled) {
           setAuthError(
@@ -96,7 +89,14 @@ export default function SignInScreen() {
     return () => {
       cancelled = true;
     };
-  }, [clientId, finishSignIn, redirectUri, request, response]);
+  }, [
+    accessToken,
+    clientId,
+    expiresIn,
+    finishSignIn,
+    idToken,
+    tokenType,
+  ]);
 
   if (status === 'signed-in') {
     return <Redirect href="/(app)/library" />;
@@ -121,18 +121,17 @@ export default function SignInScreen() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>MVP summary</Text>
         <Text style={styles.cardBody}>
-          Record Player is a warm, minimal mobile app where each person becomes an
+          Record Player is a warm, minimal web app where each person becomes an
           album and every audio memory becomes a track. The first version focuses on
-          Google sign-in, Drive-backed storage, lean offline recording, and resilient
+          Google sign-in, Drive-backed storage, browser recording, and resilient
           metadata editing without adding a custom backend.
         </Text>
 
         <Text style={styles.cardTitle}>Technical architecture</Text>
         <Text style={styles.cardBody}>
-          Expo React Native with TypeScript and Expo Router keeps the app simple and
-          mobile-first. Google OAuth runs client-side with Drive API access, album and
-          track metadata live as JSON files in Drive, and a tiny local queue stores
-          offline recordings until the next successful sync.
+          Expo Router, React Native Web, and TypeScript keep the app simple and
+          browser-first. Google OAuth runs client-side with Drive API access, and
+          album and track metadata live as JSON files in Drive.
         </Text>
 
         <Text style={styles.cardTitle}>Assumptions and tradeoffs</Text>
@@ -156,12 +155,12 @@ export default function SignInScreen() {
       <View style={styles.signInSection}>
         {!clientId ? (
           <Text style={styles.error}>
-            Add the Google OAuth client IDs from `.env.example` before signing in.
+            Add the Google web client ID from `.env.example` before signing in.
           </Text>
         ) : null}
         {error || authError ? <Text style={styles.error}>{error ?? authError}</Text> : null}
         <PrimaryButton
-          disabled={!clientId || !request}
+          disabled={!clientId}
           label={working ? 'Signing in...' : 'Continue with Google'}
           loading={working}
           onPress={() => {
