@@ -1,7 +1,7 @@
 import { DRIVE_SCOPE, GOOGLE_DISCOVERY } from '@/constants/config';
 import type { GoogleSession } from '@/domain/models';
 
-const SESSION_STORAGE_KEY = 'record-player.google-session';
+const SESSION_STORAGE_KEY = 'pershie.google-session';
 
 type StoredSession = GoogleSession;
 

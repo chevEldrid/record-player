@@ -6,7 +6,7 @@ import {
   readStoredSession,
   writeStoredSession,
 } from '@/services/googleAuth';
-import type { GoogleSession } from '@/domain/models';
+import type { GoogleSession, LibraryConfig } from '@/domain/models';
 
 type AuthContextValue = {
   session: GoogleSession | null;
@@ -18,7 +18,9 @@ type AuthContextValue = {
     idToken?: string;
     tokenType?: string;
     expiresIn?: number;
+    libraryConfig?: LibraryConfig;
   }) => Promise<void>;
+  updateLibraryConfig: (libraryConfig: LibraryConfig) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -91,6 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             ? Math.floor(Date.now() / 1000) + tokens.expiresIn
             : undefined,
           scopes: [],
+          libraryConfig: tokens.libraryConfig,
           user,
         };
 
@@ -98,6 +101,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(nextSession);
         setStatus('signed-in');
         setError(undefined);
+      },
+      async updateLibraryConfig(libraryConfig) {
+        if (!session) {
+          throw new Error('Sign in first.');
+        }
+
+        const nextSession: GoogleSession = {
+          ...session,
+          libraryConfig,
+        };
+
+        await writeStoredSession(nextSession);
+        setSession(nextSession);
       },
       async signOut() {
         await writeStoredSession(null);

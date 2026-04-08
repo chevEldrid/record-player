@@ -122,11 +122,16 @@ export class DriveRepository {
   }
 
   async ensureRootFolders(): Promise<RootDriveFolders> {
-    const rootFolderId = await this.ensureFolderByProperty(
-      'recordPlayerType',
-      'root',
-      DRIVE_ROOT_NAME
-    );
+    const configuredRootId = this.session.libraryConfig?.rootFolderId;
+    const configuredRootName =
+      this.session.libraryConfig?.rootFolderName.trim() || DRIVE_ROOT_NAME;
+    const rootFolderId = configuredRootId
+      ? await this.ensureExistingRootFolder(configuredRootId)
+      : await this.ensureFolderByProperty(
+          'recordPlayerType',
+          'root',
+          configuredRootName
+        );
     const albumsFolderId = await this.ensureFolderByProperty(
       'recordPlayerType',
       'albums-root',
@@ -135,6 +140,17 @@ export class DriveRepository {
     );
 
     return { rootFolderId, albumsFolderId };
+  }
+  private async ensureExistingRootFolder(rootFolderId: string) {
+    const rootFolder = await this.api
+      .getFile(rootFolderId)
+      .catch(() => null);
+
+    if (!rootFolder || rootFolder.mimeType !== 'application/vnd.google-apps.folder') {
+      throw new Error('The selected Pershie library folder is no longer available.');
+    }
+
+    return rootFolder.id;
   }
 
   private async ensureFolderByProperty(

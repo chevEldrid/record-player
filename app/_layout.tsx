@@ -27,7 +27,7 @@ export default function RootLayout() {
           />
           <Stack.Screen
             name="modals/track-details"
-            options={{ presentation: 'modal', title: 'Track Details' }}
+            options={{ presentation: 'modal', title: '' }}
           />
         </Stack>
       </AppDataProvider>

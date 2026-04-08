@@ -4,10 +4,9 @@ import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { DriveImage } from '@/components/DriveImage';
 import { EmptyState } from '@/components/EmptyState';
-import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenShell } from '@/components/ScreenShell';
 import { TrackListItem } from '@/components/TrackListItem';
-import { colors, spacing } from '@/constants/theme';
+import { colors, radii, spacing } from '@/constants/theme';
 import { useAppData } from '@/contexts/AppDataContext';
 
 export default function AlbumTracksScreen() {
@@ -24,59 +23,47 @@ export default function AlbumTracksScreen() {
     }
 
     navigation.setOptions({
-      title: album.name,
-      headerRight: () => (
-        <PrimaryButton
-          label="Record"
-          onPress={() =>
-            router.push({
-              pathname: '/(app)/record',
-              params: { albumId: album.id },
-            })
-          }
-          variant="secondary"
-        />
-      ),
+      title: '',
     });
-  }, [album, navigation, router]);
+  }, [album, navigation]);
 
   if (!album) {
     return (
-      <ScreenShell>
+      <ScreenShell bottomNav>
         <EmptyState title="Album not found" body="This album could not be loaded." />
       </ScreenShell>
     );
   }
 
   return (
-    <ScreenShell>
+    <ScreenShell bottomNav>
       <View style={styles.hero}>
-        <DriveImage label={album.name} size={84} uri={album.imageUri} />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>{album.name}</Text>
-          <Text style={styles.subtitle}>
-            {album.trackCount} {album.trackCount === 1 ? 'track' : 'tracks'}
-          </Text>
+        <View style={styles.coverWrap}>
+          <DriveImage label={album.name} size={104} uri={album.imageUri} />
         </View>
+        <Text style={styles.title}>{album.name}</Text>
       </View>
 
       {album.tracks.length ? (
-        <FlatList
-          contentContainerStyle={styles.list}
-          data={album.tracks}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <TrackListItem
-              onPress={() =>
-                router.push({
-                  pathname: '/modals/track-details',
-                  params: { albumId: album.id, trackId: item.id },
-                })
-              }
-              track={item}
-            />
-          )}
-        />
+        <View style={styles.timelineWrap}>
+          <View style={styles.timelineLine} />
+          <FlatList
+            contentContainerStyle={styles.list}
+            data={album.tracks}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <TrackListItem
+                onPress={() =>
+                  router.push({
+                    pathname: '/modals/track-details',
+                    params: { albumId: album.id, trackId: item.id },
+                  })
+                }
+                track={item}
+              />
+            )}
+          />
+        </View>
       ) : (
         <EmptyState
           body="Record the first story or upload an existing audio file to begin the timeline."
@@ -90,22 +77,39 @@ export default function AlbumTracksScreen() {
 const styles = StyleSheet.create({
   hero: {
     alignItems: 'center',
-    flexDirection: 'row',
     gap: spacing.md,
     marginBottom: spacing.lg,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.lg,
+  },
+  coverWrap: {
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    padding: spacing.md,
   },
   title: {
     color: colors.text,
     fontSize: 26,
     fontWeight: '800',
-  },
-  subtitle: {
-    color: colors.textMuted,
-    fontSize: 14,
-    marginTop: 4,
+    textAlign: 'center',
   },
   list: {
     gap: spacing.md,
     paddingBottom: spacing.xxl,
+    paddingHorizontal: spacing.md,
+  },
+  timelineWrap: {
+    flex: 1,
+    position: 'relative',
+  },
+  timelineLine: {
+    backgroundColor: colors.accentSoft,
+    bottom: spacing.xxl,
+    left: spacing.md + 6,
+    position: 'absolute',
+    top: 10,
+    width: 3,
   },
 });

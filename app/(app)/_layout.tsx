@@ -17,14 +17,16 @@ export default function AppLayout() {
   return (
     <Tabs
       screenOptions={{
+        headerShown: false,
         headerStyle: { backgroundColor: colors.background },
         headerShadowVisible: false,
-        tabBarStyle: { backgroundColor: colors.card, borderTopColor: colors.border },
+        tabBarStyle: { display: 'none' },
         tabBarActiveTintColor: colors.text,
         tabBarInactiveTintColor: colors.textMuted,
       }}>
       <Tabs.Screen name="library" options={{ title: 'Library', tabBarLabel: 'Library' }} />
       <Tabs.Screen name="record" options={{ title: 'Record', tabBarLabel: 'Record' }} />
+      <Tabs.Screen name="user" options={{ title: 'User', tabBarLabel: 'User' }} />
     </Tabs>
   );
 }

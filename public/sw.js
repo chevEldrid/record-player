@@ -1,4 +1,4 @@
-const CACHE_NAME = 'record-player-shell-v1';
+const CACHE_NAME = 'pershie-shell-v1';
 const APP_SHELL = [
   '/',
   '/manifest.json',

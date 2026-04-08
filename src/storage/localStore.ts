@@ -1,7 +1,7 @@
 import type { LibrarySnapshot, PendingUpload } from '@/domain/models';
 
-const WEB_CACHE_KEY = 'record-player.library-cache';
-const WEB_QUEUE_KEY = 'record-player.pending-uploads';
+const WEB_CACHE_KEY = 'pershie.library-cache';
+const WEB_QUEUE_KEY = 'pershie.pending-uploads';
 
 function readWebStorage<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') {
