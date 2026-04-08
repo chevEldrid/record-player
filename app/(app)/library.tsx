@@ -121,7 +121,7 @@ export default function LibraryScreen() {
                   {fillShelfRow(row, shelfColumns).map((album) => (
                     <View key={album.id} style={styles.bookSlot}>
                       {album.id.startsWith('empty-shelf-') ||
-                      album.id.startsWith('shelf-spacer-') ? (
+                        album.id.startsWith('shelf-spacer-') ? (
                         <View style={{ width: coverSize, height: coverSize }} />
                       ) : album.id === 'create-album-tile' ? (
                         <AddAlbumTile
@@ -151,7 +151,7 @@ export default function LibraryScreen() {
       ) : (
         <View style={styles.emptyWrap}>
           <EmptyState
-            body="Tap the + tile on the shelf to start a new album."
+            body="Tap the + to start a new album."
             title="No albums yet"
           />
         </View>
