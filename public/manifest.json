@@ -1,0 +1,30 @@
+{
+  "id": "/",
+  "name": "Record Player",
+  "short_name": "Record Player",
+  "description": "Preserve personal-history audio in a browser-first record collection backed by Google Drive.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#F7F1E8",
+  "background_color": "#FFF9F2",
+  "categories": ["music", "lifestyle", "productivity"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "type": "image/png",
+      "sizes": "180x180"
+    }
+  ]
+}

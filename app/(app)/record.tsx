@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -72,7 +73,7 @@ export default function RecordScreen() {
     setRecording(null);
     setRecordedUri(uri ?? undefined);
     setRecordedAt(new Date().toISOString());
-    setRecordedMimeType('audio/m4a');
+    setRecordedMimeType(Platform.OS === 'web' ? 'audio/webm' : 'audio/m4a');
     await Audio.setAudioModeAsync({
       allowsRecordingIOS: false,
       playsInSilentModeIOS: true,
@@ -101,10 +102,7 @@ export default function RecordScreen() {
       setTitle('');
       setRecordedUri(undefined);
       setRecordedAt(undefined);
-      Alert.alert(
-        'Saved',
-        'The track was saved. If you were offline, it will upload automatically later.'
-      );
+      Alert.alert('Saved', 'The track was saved.');
     } catch (error) {
       Alert.alert(
         'Could not save',
@@ -125,7 +123,7 @@ export default function RecordScreen() {
       return;
     }
 
-      const asset = result.assets[0];
+    const asset = result.assets[0];
     setRecordedUri(asset.uri);
     setRecordedAt(new Date().toISOString());
     setRecordedMimeType(asset.mimeType ?? 'audio/mpeg');
@@ -174,7 +172,9 @@ export default function RecordScreen() {
             <Text style={styles.recordCaption}>
               {recording
                 ? 'Tap again to stop'
-                : 'Works offline. Unsynced recordings stay on device until upload succeeds.'}
+                : Platform.OS === 'web'
+                  ? 'Browser uploads require a network connection.'
+                  : 'Works offline. Unsynced recordings stay on device until upload succeeds.'}
             </Text>
           </View>
 

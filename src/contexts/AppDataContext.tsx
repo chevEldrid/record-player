@@ -1,29 +1,18 @@
-import { AppState } from 'react-native';
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
-import * as Network from 'expo-network';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext } from 'react';
 
 import type { Album, PendingUpload, RootDriveFolders, Track } from '@/domain/models';
 import { useAuth } from '@/contexts/AuthContext';
 import { DriveRepository } from '@/services/driveRepository';
 import {
-  copyIntoPendingAudio,
   deleteLocalFile,
   ensureLocalStore,
-  getDownloadedMediaPath,
   readLibrarySnapshot,
   readPendingUploads,
   writeLibrarySnapshot,
   writePendingUploads,
 } from '@/storage/localStore';
 import { parseDriveUri } from '@/utils/driveUri';
-import { makeId } from '@/utils/id';
 import { sortByRecordedAtDesc } from '@/utils/date';
 
 type CreateAlbumInput = {
@@ -97,8 +86,7 @@ function mergePendingUploads(albums: Album[], pendingUploads: PendingUpload[]) {
 }
 
 async function hasInternetConnection() {
-  const state = await Network.getNetworkStateAsync();
-  return Boolean(state.isConnected && state.isInternetReachable !== false);
+  return typeof navigator === 'undefined' ? true : navigator.onLine;
 }
 
 export function AppDataProvider({ children }: { children: React.ReactNode }) {
@@ -109,6 +97,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<AppDataContextValue['status']>('idle');
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string>();
+  const webDownloadUrls = useRef(new Map<string, string>());
 
   const repository = useMemo(
     () => (session ? new DriveRepository(session) : null),
@@ -132,6 +121,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     rehydrateLocalState();
   }, [rehydrateLocalState]);
+
+  useEffect(() => {
+    return () => {
+      webDownloadUrls.current.forEach((url) => URL.revokeObjectURL(url));
+      webDownloadUrls.current.clear();
+    };
+  }, []);
 
   const refreshLibrary = useCallback(
     async (silent = false) => {
@@ -222,19 +218,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     }
   }, [authStatus, syncPendingUploads]);
 
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active' && authStatus === 'signed-in') {
-        refreshLibrary(true);
-        syncPendingUploads();
-      }
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, [authStatus, refreshLibrary, syncPendingUploads]);
-
   const createAlbum = useCallback(
     async (input: CreateAlbumInput) => {
       if (!repository) {
@@ -264,13 +247,17 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   const saveTrack = useCallback(
     async (input: SaveTrackInput) => {
+      if (!repository) {
+        throw new Error('Sign in first.');
+      }
+
       const album = remoteAlbums.find((candidate) => candidate.id === input.albumId);
       if (!album) {
         throw new Error('Select an album before saving.');
       }
 
       const online = await hasInternetConnection();
-      if (repository && online) {
+      if (online) {
         const saved = await repository.saveTrack({
           album,
           title: input.title,
@@ -289,55 +276,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       if (!input.audioUri) {
         throw new Error('Metadata-only edits require a network connection.');
       }
-
-      const extension = input.mimeType?.includes('mpeg')
-        ? 'mp3'
-        : input.mimeType?.includes('wav')
-          ? 'wav'
-          : 'm4a';
-      const localAudioUri = await copyIntoPendingAudio(
-        input.audioUri,
-        `${makeId('pending')}.${extension}`
-      );
-      const pending: PendingUpload = {
-        id: makeId('pending-track'),
-        albumId: input.albumId,
-        localAudioUri,
-        mimeType: input.mimeType ?? 'audio/m4a',
-        createdAt: new Date().toISOString(),
-        recordedAt: input.recordedAt,
-        title: input.title,
-        tags: input.tags,
-        notes: input.notes,
-        transcript: input.transcript,
-        imageUri: input.imageUri,
-      };
-
-      const nextQueue = [...pendingUploads, pending];
-      setPendingUploads(nextQueue);
-      await writePendingUploads(nextQueue);
-
-      return {
-        id: pending.id,
-        albumId: pending.albumId,
-        title: pending.title,
-        recordedAt: pending.recordedAt,
-        createdAt: pending.createdAt,
-        updatedAt: pending.createdAt,
-        tags: pending.tags,
-        notes: pending.notes,
-        transcript: pending.transcript,
-        imageUri: pending.imageUri,
-        audioUri: pending.localAudioUri,
-        warnings: ['pending-upload' as const],
-        isPendingUpload: true,
-        drive: {
-          recordingsFolderId: album.drive.recordingsFolderId,
-          attachmentsFolderId: album.drive.attachmentsFolderId,
-        },
-      };
+      throw new Error('Offline uploads are not supported in the web app.');
     },
-    [pendingUploads, refreshLibrary, remoteAlbums, repository]
+    [refreshLibrary, remoteAlbums, repository]
   );
 
   const updateTrack = useCallback(
@@ -391,9 +332,16 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         return driveUri;
       }
 
-      const localPath = getDownloadedMediaPath(parsed.fileId, parsed.fileName);
+      const existingUrl = webDownloadUrls.current.get(parsed.fileId);
+      if (existingUrl) {
+        return existingUrl;
+      }
+
       try {
-        return await repository.downloadDriveFileToLocal(parsed.fileId, localPath);
+        const blob = await repository.downloadDriveFile(parsed.fileId);
+        const objectUrl = URL.createObjectURL(blob);
+        webDownloadUrls.current.set(parsed.fileId, objectUrl);
+        return objectUrl;
       } catch {
         return undefined;
       }
