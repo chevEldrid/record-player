@@ -104,9 +104,8 @@ function makeAlbumFolderName(name: string, albumId: string) {
   return `${slugify(name) || 'album'}-${albumId.slice(-4)}`;
 }
 
-function makeTrackBaseName(title: string, recordedAt: string) {
-  const stamp = recordedAt.replace(/[:.]/g, '-');
-  return `${stamp}-${slugify(title) || 'track'}`;
+function makeTrackBaseName(title: string, trackId: string) {
+  return `${slugify(title) || 'track'}-${trackId.slice(-4)}`;
 }
 
 async function blobFromUri(uri: string) {
@@ -250,7 +249,7 @@ export class DriveRepository {
   async saveTrack(input: UpsertTrackInput) {
     const trackId = input.track?.id ?? makeId('track');
     const now = new Date().toISOString();
-    const baseName = makeTrackBaseName(input.title, input.recordedAt);
+    const baseName = makeTrackBaseName(input.title, trackId);
     const metadataName = `${baseName}.json`;
     const audioFileName =
       input.track?.audioUri && input.track.audioUri.endsWith('.m4a')

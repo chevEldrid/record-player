@@ -1,8 +1,8 @@
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
+import { Link, Redirect } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Redirect } from 'expo-router';
 
 import {
   APP_NAME,
@@ -238,8 +238,8 @@ export default function SignInScreen() {
           {'\n'}    {'{person-slug-id}'}
           {'\n'}      metadata.json
           {'\n'}      recordings/
-          {'\n'}        {'{timestamp-title}'}.m4a
-          {'\n'}        {'{timestamp-title}'}.json
+          {'\n'}        {'{track-title-id}'}.m4a
+          {'\n'}        {'{track-title-id}'}.json
           {'\n'}      attachments/
         </Text>
 
@@ -375,6 +375,15 @@ export default function SignInScreen() {
           />
         ) : null}
         {working ? <ActivityIndicator color={colors.text} style={{ marginTop: spacing.md }} /> : null}
+        <View style={styles.legalLinks}>
+          <Link href="/privacy-policy" style={styles.legalLink}>
+            Privacy Policy
+          </Link>
+          <Text style={styles.legalDivider}>•</Text>
+          <Link href="/terms-of-service" style={styles.legalLink}>
+            Terms of Service
+          </Link>
+        </View>
       </View>
     </ScreenShell>
   );
@@ -507,6 +516,22 @@ const styles = StyleSheet.create({
   signInSection: {
     marginBottom: spacing.xxl,
     marginTop: spacing.xl,
+  },
+  legalLinks: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.xs,
+    justifyContent: 'center',
+    marginTop: spacing.lg,
+  },
+  legalLink: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  legalDivider: {
+    color: colors.textMuted,
+    fontSize: 13,
   },
   error: {
     color: colors.danger,
