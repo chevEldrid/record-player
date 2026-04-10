@@ -17,6 +17,7 @@ export type GoogleSession = {
 export type LibraryConfig = {
   rootFolderName: string;
   rootFolderId?: string;
+  parentFolderId?: string;
 };
 
 export type DrivePointers = {
