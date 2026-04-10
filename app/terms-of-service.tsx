@@ -1,3 +1,4 @@
+import { Link } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ScreenShell } from '@/components/ScreenShell';
@@ -6,6 +7,10 @@ import { colors, spacing } from '@/constants/theme';
 export default function TermsOfServiceScreen() {
   return (
     <ScreenShell scroll>
+      <Link href="/auth/sign-in" style={styles.backLink}>
+        ←
+      </Link>
+
       <View style={styles.section}>
         <Text style={styles.title}>Terms of Service</Text>
         <Text style={styles.meta}>Last updated: April 9, 2026</Text>
@@ -73,6 +78,12 @@ export default function TermsOfServiceScreen() {
 }
 
 const styles = StyleSheet.create({
+  backLink: {
+    color: colors.accent,
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: spacing.lg,
+  },
   section: {
     gap: spacing.sm,
     marginBottom: spacing.xl,

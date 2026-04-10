@@ -124,12 +124,14 @@ export class DriveRepository {
     const configuredRootId = this.session.libraryConfig?.rootFolderId;
     const configuredRootName =
       this.session.libraryConfig?.rootFolderName.trim() || DRIVE_ROOT_NAME;
+    const configuredParentId = this.session.libraryConfig?.parentFolderId;
     const rootFolderId = configuredRootId
       ? await this.ensureExistingRootFolder(configuredRootId)
       : await this.ensureFolderByProperty(
           'recordPlayerType',
           'root',
-          configuredRootName
+          configuredRootName,
+          configuredParentId
         );
     const albumsFolderId = await this.ensureFolderByProperty(
       'recordPlayerType',

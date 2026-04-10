@@ -19,8 +19,9 @@ export default function RootLayout() {
           }}>
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="auth/sign-in" options={{ headerShown: false }} />
-          <Stack.Screen name="privacy-policy" options={{ title: 'Privacy Policy' }} />
-          <Stack.Screen name="terms-of-service" options={{ title: 'Terms of Service' }} />
+          <Stack.Screen name="about" options={{ headerShown: false }} />
+          <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
+          <Stack.Screen name="terms-of-service" options={{ headerShown: false }} />
           <Stack.Screen name="(app)" options={{ headerShown: false }} />
           <Stack.Screen name="albums/[albumId]" options={{ title: 'Tracks' }} />
           <Stack.Screen

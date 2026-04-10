@@ -1,8 +1,8 @@
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { Link, Redirect } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   APP_NAME,
@@ -36,6 +36,28 @@ function normalizeRootFolderName(value: string) {
   return value.trim() || DRIVE_ROOT_NAME;
 }
 
+function ModeCard({
+  active,
+  title,
+  body,
+  onPress,
+}: {
+  active: boolean;
+  title: string;
+  body: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={[styles.modeCard, active && styles.modeCardActive]}>
+      <Text style={styles.modeTitle}>{title}</Text>
+      <Text style={styles.modeBody}>{body}</Text>
+    </Pressable>
+  );
+}
+
 export default function SignInScreen() {
   const clientId = getGoogleClientId();
   const pickerApiKey = getGooglePickerApiKey();
@@ -51,6 +73,7 @@ export default function SignInScreen() {
   const [baseFolderName, setBaseFolderName] = useState(DRIVE_ROOT_NAME);
   const [pendingTokens, setPendingTokens] = useState<PendingTokens | null>(null);
   const [pickedFolder, setPickedFolder] = useState<PickedFolder | null>(null);
+  const [parentFolder, setParentFolder] = useState<PickedFolder | null>(null);
 
   const [, response, promptAsync] = AuthSession.useAuthRequest(
     {
@@ -66,91 +89,30 @@ export default function SignInScreen() {
     GOOGLE_DISCOVERY
   );
 
-  const authTokens = useMemo<PendingTokens | null>(() => {
-    if (response?.type !== 'success' || !response.params.access_token) {
-      return null;
-    }
-
-    return {
-      accessToken: response.params.access_token,
-      idToken: response.params.id_token,
-      tokenType: response.params.token_type,
-      expiresIn: response.params.expires_in
-        ? Number(response.params.expires_in)
-        : undefined,
-    };
-  }, [response]);
-
   useEffect(() => {
-    if (!clientId || !authTokens) {
+    if (!response) {
       return;
     }
 
-    let cancelled = false;
-
-    async function completeSignIn() {
-      if (!authTokens) {
-        return;
-      }
-
-      const tokens = authTokens;
-      setWorking(true);
-
-      try {
-        if (setupMode === 'import') {
-          if (!pickerApiKey || !pickerAppId) {
-            throw new Error(
-              'Import with Google Picker requires EXPO_PUBLIC_GOOGLE_API_KEY and EXPO_PUBLIC_GOOGLE_CLOUD_PROJECT_NUMBER.'
-            );
-          }
-
-          const folder = await openGoogleFolderPicker({
-            accessToken: tokens.accessToken,
-            apiKey: pickerApiKey,
-            appId: pickerAppId,
-          });
-
-          if (cancelled) {
-            return;
-          }
-
-          setPendingTokens(tokens);
-          setPickedFolder(folder);
-          setAuthError(
-            folder
-              ? undefined
-              : 'No folder was selected. You can reopen Google Picker or create a new library instead.'
-          );
-          return;
-        }
-
-        await finishSignIn({
-          ...tokens,
-          libraryConfig: {
-            rootFolderName: normalizeRootFolderName(baseFolderName),
-          },
-        });
-      } catch (signInError) {
-        if (!cancelled) {
-          setAuthError(
-            signInError instanceof Error
-              ? signInError.message
-              : 'Google sign-in did not complete.'
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setWorking(false);
-        }
-      }
+    if (response.type === 'success' && response.params.access_token) {
+      setPendingTokens({
+        accessToken: response.params.access_token,
+        idToken: response.params.id_token,
+        tokenType: response.params.token_type,
+        expiresIn: response.params.expires_in
+          ? Number(response.params.expires_in)
+          : undefined,
+      });
+      setPickedFolder(null);
+      setParentFolder(null);
+      setAuthError(undefined);
+      return;
     }
 
-    completeSignIn();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [authTokens, baseFolderName, clientId, finishSignIn, pickerApiKey, pickerAppId, setupMode]);
+    if (response.type === 'error') {
+      setAuthError(response.error?.message ?? 'Google sign-in did not complete.');
+    }
+  }, [response]);
 
   async function finalizeSignIn(libraryConfig: LibraryConfig) {
     if (!pendingTokens) {
@@ -175,7 +137,7 @@ export default function SignInScreen() {
     }
   }
 
-  async function reopenPicker() {
+  async function openPicker() {
     if (!pendingTokens || !pickerApiKey || !pickerAppId) {
       return;
     }
@@ -188,7 +150,9 @@ export default function SignInScreen() {
         apiKey: pickerApiKey,
         appId: pickerAppId,
       });
+
       setPickedFolder(folder);
+
       if (!folder) {
         setAuthError(
           'No folder was selected. You can reopen Google Picker or create a new library instead.'
@@ -203,9 +167,39 @@ export default function SignInScreen() {
     }
   }
 
+  async function chooseParentFolder() {
+    if (!pendingTokens || !pickerApiKey || !pickerAppId) {
+      return;
+    }
+
+    setWorking(true);
+    setAuthError(undefined);
+    try {
+      const folder = await openGoogleFolderPicker({
+        accessToken: pendingTokens.accessToken,
+        apiKey: pickerApiKey,
+        appId: pickerAppId,
+      });
+
+      if (!folder) {
+        return;
+      }
+
+      setParentFolder(folder);
+    } catch (pickerError) {
+      setAuthError(
+        pickerError instanceof Error ? pickerError.message : 'Failed to open Google Picker.'
+      );
+    } finally {
+      setWorking(false);
+    }
+  }
+
   if (status === 'signed-in') {
     return <Redirect href="/(app)/library" />;
   }
+
+  const signedInForSetup = Boolean(pendingTokens);
 
   return (
     <ScreenShell padded scroll>
@@ -215,175 +209,169 @@ export default function SignInScreen() {
             <View style={styles.discCenter} />
           </View>
         </View>
-        <Text style={styles.eyebrow}>Personal histories, kept close</Text>
         <Text style={styles.title}>{APP_NAME}</Text>
         <Text style={styles.body}>
-          Capture spoken memories as tracks inside albums for the people who matter
-          most, with Google Drive as the source of truth.
+          Your Digital Memory Collection
         </Text>
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>How Pershie stores your library</Text>
-        <Text style={styles.cardBody}>
-          Pershie signs in with Google, saves files into your Drive, and keeps the
-          browser app lean. You can create a fresh base folder or reconnect to an
-          existing library before entering the app.
-        </Text>
-
-        <Text style={styles.cardTitle}>Drive folder structure</Text>
-        <Text style={styles.cardBodyMono}>
-          {normalizeRootFolderName(baseFolderName)}
-          {'\n'}  {DRIVE_ALBUMS_FOLDER_NAME}
-          {'\n'}    {'{person-slug-id}'}
-          {'\n'}      metadata.json
-          {'\n'}      recordings/
-          {'\n'}        {'{track-title-id}'}.m4a
-          {'\n'}        {'{track-title-id}'}.json
-          {'\n'}      attachments/
-        </Text>
-
-        <Text style={styles.cardTitle}>Choose your setup</Text>
-        <View style={styles.modeRow}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => {
-              setSetupMode('create');
-              setPendingTokens(null);
-              setPickedFolder(null);
-              setAuthError(undefined);
-            }}
-            style={[styles.modeCard, setupMode === 'create' && styles.modeCardActive]}>
-            <Text style={styles.modeTitle}>Create new library</Text>
-            <Text style={styles.modeBody}>
-              Pick the top-level Drive folder name you want Pershie to manage.
+      {!signedInForSetup ? (
+        <View style={styles.signInSection}>
+          {!clientId ? (
+            <Text style={styles.error}>
+              Add the Google web client ID from `.env.example` before signing in.
             </Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => {
-              setSetupMode('import');
-              setPendingTokens(null);
-              setPickedFolder(null);
-              setAuthError(undefined);
-            }}
-            style={[styles.modeCard, setupMode === 'import' && styles.modeCardActive]}>
-            <Text style={styles.modeTitle}>Import with Google Picker</Text>
-            <Text style={styles.modeBody}>
-              Sign in, then choose the Drive folder you want Pershie to use.
-            </Text>
-          </Pressable>
-        </View>
-
-        {setupMode === 'create' ? (
-          <LabeledField
-            helper="This becomes the top-level folder in Google Drive. It does not have to be named Pershie."
-            label="Base folder name"
-            onChangeText={setBaseFolderName}
-            placeholder={DRIVE_ROOT_NAME}
-            value={baseFolderName}
-          />
-        ) : (
-          <Text style={styles.cardBody}>
-            Google Picker lets users explicitly choose an existing Drive folder,
-            which is more reliable than trying to discover folders with limited
-            Drive scopes.
-          </Text>
-        )}
-      </View>
-
-      {pendingTokens ? (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Imported folder</Text>
-          {pickedFolder ? (
-            <View style={styles.libraryOption}>
-              <Text style={styles.libraryOptionTitle}>{pickedFolder.name}</Text>
-              <Text style={styles.libraryOptionBody}>
-                {pickedFolder.name}/{DRIVE_ALBUMS_FOLDER_NAME}
-              </Text>
-            </View>
-          ) : (
-            <Text style={styles.cardBody}>
-              Pick a Drive folder to reconnect an existing library, or create a new
-              one instead.
-            </Text>
-          )}
-
-          <View style={styles.actionStack}>
-            <PrimaryButton
-              label={pickedFolder ? 'Use selected folder' : 'Open Google Picker'}
-              loading={working}
-              disabled={!pickedFolder && (!pickerApiKey || !pickerAppId)}
-              onPress={() => {
-                if (pickedFolder) {
-                  finalizeSignIn({
-                    rootFolderId: pickedFolder.id,
-                    rootFolderName: pickedFolder.name,
-                  });
-                  return;
-                }
-
-                reopenPicker();
-              }}
-            />
-            <PrimaryButton
-              label={pickedFolder ? 'Choose a different folder' : 'Create a new library instead'}
-              onPress={() => {
-                if (pickedFolder) {
-                  reopenPicker();
-                  return;
-                }
-
-                finalizeSignIn({
-                  rootFolderName: normalizeRootFolderName(baseFolderName),
-                });
-              }}
-              variant="secondary"
-            />
-          </View>
-        </View>
-      ) : null}
-
-      <View style={styles.signInSection}>
-        {!clientId ? (
-          <Text style={styles.error}>
-            Add the Google web client ID from `.env.example` before signing in.
-          </Text>
-        ) : null}
-        {setupMode === 'import' && (!pickerApiKey || !pickerAppId) ? (
-          <Text style={styles.error}>
-            Import mode also needs `EXPO_PUBLIC_GOOGLE_API_KEY` and
-            `EXPO_PUBLIC_GOOGLE_CLOUD_PROJECT_NUMBER`.
-          </Text>
-        ) : null}
-        {error || authError ? <Text style={styles.error}>{error ?? authError}</Text> : null}
-        {!pendingTokens ? (
+          ) : null}
+          {error || authError ? <Text style={styles.error}>{error ?? authError}</Text> : null}
           <PrimaryButton
-            disabled={!clientId || (setupMode === 'import' && (!pickerApiKey || !pickerAppId))}
-            label={
-              working
-                ? 'Signing in...'
-                : setupMode === 'import'
-                  ? 'Sign in to open Google Picker'
-                  : 'Continue with Google'
-            }
+            disabled={!clientId}
+            label={working ? 'Signing in...' : 'Sign in with Google'}
             loading={working}
             onPress={() => {
               setAuthError(undefined);
-              promptAsync();
+              setWorking(true);
+              promptAsync().finally(() => {
+                setWorking(false);
+              });
             }}
           />
-        ) : null}
-        {working ? <ActivityIndicator color={colors.text} style={{ marginTop: spacing.md }} /> : null}
-        <View style={styles.legalLinks}>
-          <Link href="/privacy-policy" style={styles.legalLink}>
-            Privacy Policy
-          </Link>
-          <Text style={styles.legalDivider}>•</Text>
-          <Link href="/terms-of-service" style={styles.legalLink}>
-            Terms of Service
-          </Link>
         </View>
+      ) : (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Choose your Experience</Text>
+          <View style={styles.modeRow}>
+            <ModeCard
+              active={setupMode === 'create'}
+              title="Create new"
+              body="Creates a new library in your Google Drive"
+              onPress={() => {
+                setSetupMode('create');
+                setPickedFolder(null);
+                setAuthError(undefined);
+              }}
+            />
+            <ModeCard
+              active={setupMode === 'import'}
+              title="Open existing"
+              body="Select an existing Pershie library"
+              onPress={() => {
+                setSetupMode('import');
+                setAuthError(undefined);
+              }}
+            />
+          </View>
+
+          {setupMode === 'create' ? (
+            <>
+              <LabeledField
+                label="Base folder name"
+                onChangeText={setBaseFolderName}
+                placeholder={DRIVE_ROOT_NAME}
+                value={baseFolderName}
+              />
+              {parentFolder ? (
+                <View style={styles.libraryOption}>
+                  <Text style={styles.libraryOptionTitle}>{parentFolder.name}</Text>
+                  <Text style={styles.libraryOptionBody}>
+                    New library will be created here as {normalizeRootFolderName(baseFolderName)}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.cardBody}>
+                  By default Pershie creates the library at the top level of Drive. You can
+                  also choose an existing parent folder first.
+                </Text>
+              )}
+              <View style={styles.actionStack}>
+                <PrimaryButton
+                  disabled={!pickerApiKey || !pickerAppId}
+                  label={parentFolder ? 'Choose a different parent folder' : 'Choose parent folder'}
+                  onPress={chooseParentFolder}
+                  variant="secondary"
+                />
+              </View>
+              <PrimaryButton
+                label="Create new library"
+                loading={working}
+                onPress={() =>
+                  finalizeSignIn({
+                    parentFolderId: parentFolder?.id,
+                    rootFolderName: normalizeRootFolderName(baseFolderName),
+                  })
+                }
+              />
+            </>
+          ) : (
+            <>
+              {!pickerApiKey || !pickerAppId ? (
+                <Text style={styles.error}>
+                  Import mode needs `EXPO_PUBLIC_GOOGLE_API_KEY` and
+                  `EXPO_PUBLIC_GOOGLE_CLOUD_PROJECT_NUMBER`.
+                </Text>
+              ) : null}
+              {pickedFolder ? (
+                <View style={styles.libraryOption}>
+                  <Text style={styles.libraryOptionTitle}>{pickedFolder.name}</Text>
+                  <Text style={styles.libraryOptionBody}>
+                    {pickedFolder.name}/{DRIVE_ALBUMS_FOLDER_NAME}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.cardBody}>
+                  Choose the existing base folder you want Pershie to reconnect to.
+                </Text>
+              )}
+              <View style={styles.actionStack}>
+                <PrimaryButton
+                  disabled={!pickerApiKey || !pickerAppId}
+                  label={pickedFolder ? 'Use selected folder' : 'Open Google Picker'}
+                  loading={working}
+                  onPress={() => {
+                    if (pickedFolder) {
+                      finalizeSignIn({
+                        rootFolderId: pickedFolder.id,
+                        rootFolderName: pickedFolder.name,
+                        parentFolderId: undefined,
+                      });
+                      return;
+                    }
+
+                    openPicker();
+                  }}
+                />
+                <PrimaryButton
+                  label={pickedFolder ? 'Choose a different folder' : 'Create a new library instead'}
+                  onPress={() => {
+                    if (pickedFolder) {
+                      openPicker();
+                      return;
+                    }
+
+                    setSetupMode('create');
+                    setAuthError(undefined);
+                  }}
+                  variant="secondary"
+                />
+              </View>
+            </>
+          )}
+
+          {error || authError ? <Text style={styles.error}>{error ?? authError}</Text> : null}
+        </View>
+      )}
+
+      <View style={styles.legalLinks}>
+        <Link href="/about" style={styles.legalLink}>
+          About
+        </Link>
+        <Text style={styles.legalDivider}>•</Text>
+        <Link href="/privacy-policy" style={styles.legalLink}>
+          Privacy Policy
+        </Link>
+        <Text style={styles.legalDivider}>•</Text>
+        <Link href="/terms-of-service" style={styles.legalLink}>
+          Terms of Service
+        </Link>
       </View>
     </ScreenShell>
   );
@@ -418,13 +406,6 @@ const styles = StyleSheet.create({
     height: 36,
     width: 36,
   },
-  eyebrow: {
-    color: colors.accent,
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
   title: {
     color: colors.text,
     fontSize: 34,
@@ -448,7 +429,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     color: colors.text,
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: '700',
   },
   cardBody: {
@@ -511,18 +492,16 @@ const styles = StyleSheet.create({
   },
   actionStack: {
     gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  signInSection: {
-    marginBottom: spacing.xxl,
-    marginTop: spacing.xl,
+    marginTop: spacing.xs,
   },
   legalLinks: {
     alignItems: 'center',
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.xs,
     justifyContent: 'center',
-    marginTop: spacing.lg,
+    marginBottom: spacing.xl,
+    marginTop: spacing.xl,
   },
   legalLink: {
     color: colors.accent,
@@ -536,6 +515,9 @@ const styles = StyleSheet.create({
   error: {
     color: colors.danger,
     fontSize: 13,
-    marginBottom: spacing.sm,
+    lineHeight: 20,
+  },
+  signInSection: {
+    marginTop: spacing.xl,
   },
 });

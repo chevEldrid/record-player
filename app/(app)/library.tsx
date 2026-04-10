@@ -11,7 +11,6 @@ import {
 import { useRouter } from 'expo-router';
 
 import { AlbumCard } from '@/components/AlbumCard';
-import { EmptyState } from '@/components/EmptyState';
 import { ScreenShell } from '@/components/ScreenShell';
 import { colors, radii, spacing } from '@/constants/theme';
 import { useAppData } from '@/contexts/AppDataContext';
@@ -108,7 +107,7 @@ export default function LibraryScreen() {
         <View style={styles.loader}>
           <ActivityIndicator color={colors.text} size="large" />
         </View>
-      ) : albums.length ? (
+      ) : (
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
@@ -148,13 +147,6 @@ export default function LibraryScreen() {
             ))}
           </View>
         </ScrollView>
-      ) : (
-        <View style={styles.emptyWrap}>
-          <EmptyState
-            body="Tap the + to start a new album."
-            title="No albums yet"
-          />
-        </View>
       )}
     </ScreenShell>
   );
@@ -247,10 +239,5 @@ const styles = StyleSheet.create({
     fontSize: 42,
     fontWeight: '200',
     lineHeight: 44,
-  },
-  emptyWrap: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.md,
   },
 });
