@@ -1,5 +1,11 @@
 {
   "buildCommand": "pnpm run build:web",
   "installCommand": "pnpm install --frozen-lockfile",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/((?!.*\\.).*)",
+      "destination": "/"
+    }
+  ]
 }
