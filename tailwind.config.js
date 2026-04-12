@@ -5,7 +5,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        appBg: '#F7F1E8',
+        appBg: '#FFBD59',
         appBgElevated: '#FFF9F2',
         appCard: '#FFFDF9',
         appCardAlt: '#F3E7D6',

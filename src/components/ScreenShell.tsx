@@ -44,7 +44,7 @@ export function ScreenShell({
           <ScrollView
             ref={scrollRef}
             className="flex-1 bg-appBg"
-            contentContainerStyle={{ backgroundColor: '#F7F1E8', flexGrow: 1 }}
+            contentContainerStyle={{ backgroundColor: '#FFBD59', flexGrow: 1 }}
             keyboardShouldPersistTaps="handled">
             {content}
           </ScrollView>
