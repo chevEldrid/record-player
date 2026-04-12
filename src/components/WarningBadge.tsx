@@ -6,7 +6,6 @@ import type { WarningCode } from '@/domain/models';
 const warningCopy: Record<WarningCode, string> = {
   'missing-album-metadata': 'Album metadata missing',
   'missing-track-metadata': 'Track metadata missing',
-  'missing-audio-file': 'Audio missing',
   'missing-track-title': 'Title missing',
   'missing-recorded-at': 'Date missing',
   'pending-upload': 'Pending upload',

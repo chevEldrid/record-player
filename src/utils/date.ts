@@ -13,6 +13,39 @@ function parseDateValue(value?: string) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+function pad(value: number) {
+  return `${value}`.padStart(2, '0');
+}
+
+export function toLocalTimestampMinute(date = new Date()) {
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  const offsetMinutes = -date.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? '+' : '-';
+  const absoluteOffset = Math.abs(offsetMinutes);
+  const offsetHours = pad(Math.floor(absoluteOffset / 60));
+  const offsetRemainder = pad(absoluteOffset % 60);
+
+  return `${year}-${month}-${day}T${hours}:${minutes}:00${sign}${offsetHours}:${offsetRemainder}`;
+}
+
+export function formatTimestampFileLabel(value?: string) {
+  const date = parseDateValue(value);
+  if (!date) {
+    return 'recording';
+  }
+
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  return `${year}-${month}-${day}_${hours}-${minutes}`;
+}
+
 export function formatDisplayDate(value?: string) {
   if (!value) {
     return 'Date unavailable';

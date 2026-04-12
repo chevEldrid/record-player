@@ -29,7 +29,6 @@ export type DrivePointers = {
 export type WarningCode =
   | 'missing-album-metadata'
   | 'missing-track-metadata'
-  | 'missing-audio-file'
   | 'missing-track-title'
   | 'missing-recorded-at'
   | 'pending-upload'
@@ -54,7 +53,6 @@ export type TrackMetadata = {
   updatedAt: string;
   tags: string[];
   notes: string;
-  transcript: string;
   imageFileName?: string;
   audioFileName?: string;
 };
@@ -85,7 +83,6 @@ export type Track = {
   updatedAt: string;
   tags: string[];
   notes: string;
-  transcript: string;
   imageUri?: string;
   audioUri?: string;
   warnings: WarningCode[];
@@ -114,7 +111,6 @@ export type PendingUpload = {
   title: string;
   tags: string[];
   notes: string;
-  transcript: string;
   imageUri?: string;
 };
 

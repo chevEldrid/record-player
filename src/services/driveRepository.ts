@@ -31,7 +31,6 @@ type UpsertTrackInput = {
   recordedAt: string;
   tags: string[];
   notes: string;
-  transcript: string;
   imageUri?: string;
   audioUri?: string;
   mimeType?: string;
@@ -92,7 +91,6 @@ function asTrackMetadata(value: unknown): TrackMetadata | null {
       ? record.tags.filter((tag): tag is string => typeof tag === 'string')
       : [],
     notes: typeof record.notes === 'string' ? record.notes : '',
-    transcript: typeof record.transcript === 'string' ? record.transcript : '',
     imageFileName:
       typeof record.imageFileName === 'string' ? record.imageFileName : undefined,
     audioFileName:
@@ -296,7 +294,6 @@ export class DriveRepository {
       updatedAt: now,
       tags: input.tags,
       notes: input.notes,
-      transcript: input.transcript,
       imageFileName,
       audioFileName:
         audioDriveFile?.name ??
@@ -344,7 +341,6 @@ export class DriveRepository {
       recordedAt: pending.recordedAt,
       tags: pending.tags,
       notes: pending.notes,
-      transcript: pending.transcript,
       imageUri: pending.imageUri,
       audioUri: pending.localAudioUri,
       mimeType: pending.mimeType,
@@ -497,9 +493,6 @@ export class DriveRepository {
       if (!metadata) {
         warnings.push('missing-track-metadata');
       }
-      if (!audioFile) {
-        warnings.push('missing-audio-file');
-      }
       if (metadataRecord && !metadata) {
         warnings.push('orphan-metadata');
       }
@@ -530,7 +523,6 @@ export class DriveRepository {
           metadata?.updatedAt || audioFile?.modifiedTime || new Date().toISOString(),
         tags: metadata?.tags ?? [],
         notes: metadata?.notes ?? '',
-        transcript: metadata?.transcript ?? '',
         imageUri:
           metadata?.imageFileName && attachmentByName?.get(metadata.imageFileName)
             ? makeDriveUri(
