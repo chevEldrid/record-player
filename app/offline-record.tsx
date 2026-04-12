@@ -1,5 +1,4 @@
 import { Audio } from 'expo-av';
-import { Trash2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -15,6 +14,7 @@ import {
 
 import { LabeledField } from '@/components/LabeledField';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { RecordedFileCard } from '@/components/RecordedFileCard';
 import { ScreenShell } from '@/components/ScreenShell';
 import { colors, radii, spacing } from '@/constants/theme';
 import {
@@ -202,29 +202,11 @@ export default function OfflineRecordScreen() {
           </View>
 
           {recordedUri ? (
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Recorded File</Text>
-              <View style={styles.fileRow}>
-                <View style={styles.fileGlyph}>
-                  <View style={styles.fileGlyphFold} />
-                </View>
-                <View style={styles.fileMeta}>
-                  <Text numberOfLines={1} style={styles.fileMetaName}>
-                    {resolvedName}.{extension}
-                  </Text>
-                  <Text style={styles.fileMetaStamp}>{formatDisplayDate(recordedAt)}</Text>
-                </View>
-                <Pressable
-                  accessibilityLabel="Discard recording"
-                  accessibilityRole="button"
-                  onPress={() => setConfirmDiscardOpen(true)}
-                  style={({ pressed }) => [
-                    styles.trashButton,
-                    pressed && styles.trashButtonPressed,
-                  ]}>
-                  <Trash2 color={colors.textMuted} size={16} strokeWidth={2} />
-                </Pressable>
-              </View>
+            <RecordedFileCard
+              fileName={`${resolvedName}.${extension}`}
+              onDiscard={() => setConfirmDiscardOpen(true)}
+              recordedAtLabel={formatDisplayDate(recordedAt)}
+              recordedUri={recordedUri}>
               <LabeledField
                 label="File name"
                 onChangeText={setFileName}
@@ -236,7 +218,7 @@ export default function OfflineRecordScreen() {
                 loading={saving}
                 onPress={saveCurrentRecording}
               />
-            </View>
+            </RecordedFileCard>
           ) : null}
         </View>
       </ScrollView>
@@ -320,87 +302,6 @@ const styles = StyleSheet.create({
   },
   recordButtonCoreLive: {
     backgroundColor: '#C9563B',
-  },
-  card: {
-    backgroundColor: colors.card,
-    borderColor: colors.border,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    gap: spacing.md,
-    padding: spacing.lg,
-  },
-  cardTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  helperBody: {
-    color: colors.textMuted,
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  helperCard: {
-    backgroundColor: colors.cardAlt,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    gap: spacing.xs,
-    padding: spacing.md,
-  },
-  helperTitle: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  fileRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  fileGlyph: {
-    backgroundColor: colors.cardAlt,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    height: 58,
-    overflow: 'hidden',
-    position: 'relative',
-    width: 48,
-  },
-  fileGlyphFold: {
-    backgroundColor: colors.background,
-    height: 14,
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    transform: [{ rotate: '45deg' }, { translateX: 7 }, { translateY: -7 }],
-    width: 14,
-  },
-  fileMeta: {
-    flex: 1,
-    gap: 4,
-  },
-  fileMetaName: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  fileMetaStamp: {
-    color: colors.textMuted,
-    fontSize: 13,
-  },
-  trashButton: {
-    alignItems: 'center',
-    borderColor: colors.border,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    justifyContent: 'center',
-    minHeight: 36,
-    minWidth: 52,
-    paddingHorizontal: spacing.sm,
-  },
-  trashButtonPressed: {
-    opacity: 0.7,
   },
   modalBackdrop: {
     alignItems: 'center',

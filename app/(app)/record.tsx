@@ -1,5 +1,4 @@
 import { Audio } from 'expo-av';
-import { Trash2 } from 'lucide-react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -7,6 +6,7 @@ import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'rea
 import { EmptyState } from '@/components/EmptyState';
 import { LabeledField } from '@/components/LabeledField';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { RecordedFileCard } from '@/components/RecordedFileCard';
 import { ScreenShell } from '@/components/ScreenShell';
 import { colors, radii, spacing } from '@/constants/theme';
 import { useAppData } from '@/contexts/AppDataContext';
@@ -246,29 +246,11 @@ export default function RecordScreen() {
             </View>
 
             {recordedUri && recordedAt ? (
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>Recorded File</Text>
-                <View style={styles.fileRow}>
-                  <View style={styles.fileGlyph}>
-                    <View style={styles.fileGlyphFold} />
-                  </View>
-                  <View style={styles.fileMeta}>
-                    <Text numberOfLines={1} style={styles.fileMetaName}>
-                      {displayName}.{extension}
-                    </Text>
-                    <Text style={styles.fileMetaStamp}>{formatDisplayDate(recordedAt)}</Text>
-                  </View>
-                  <Pressable
-                    accessibilityLabel="Discard recording"
-                    accessibilityRole="button"
-                    onPress={() => setConfirmDiscardOpen(true)}
-                    style={({ pressed }) => [
-                      styles.trashButton,
-                      pressed && styles.trashButtonPressed,
-                    ]}>
-                    <Trash2 color={colors.textMuted} size={16} strokeWidth={2} />
-                  </Pressable>
-                </View>
+              <RecordedFileCard
+                fileName={`${displayName}.${extension}`}
+                onDiscard={() => setConfirmDiscardOpen(true)}
+                recordedAtLabel={formatDisplayDate(recordedAt)}
+                recordedUri={recordedUri}>
                 <Pressable onPress={() => setSelectorOpen(true)} style={styles.albumPicker}>
                   <Text style={styles.albumPickerLabel}>Save to</Text>
                   <Text numberOfLines={1} style={styles.albumPickerValue}>
@@ -316,7 +298,7 @@ export default function RecordScreen() {
                     variant="secondary"
                   />
                 </View>
-              </View>
+              </RecordedFileCard>
             ) : null}
 
             {pendingUploads.length ? (
@@ -441,70 +423,6 @@ const styles = StyleSheet.create({
   },
   recordButtonCoreLive: {
     borderRadius: 28,
-  },
-  card: {
-    backgroundColor: colors.card,
-    borderColor: colors.border,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    gap: spacing.md,
-    marginHorizontal: spacing.md,
-    padding: spacing.lg,
-  },
-  cardTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  fileRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  fileGlyph: {
-    backgroundColor: colors.cardAlt,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    height: 58,
-    overflow: 'hidden',
-    position: 'relative',
-    width: 48,
-  },
-  fileGlyphFold: {
-    backgroundColor: colors.background,
-    height: 14,
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    transform: [{ rotate: '45deg' }, { translateX: 7 }, { translateY: -7 }],
-    width: 14,
-  },
-  fileMeta: {
-    flex: 1,
-    gap: 4,
-  },
-  fileMetaName: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  fileMetaStamp: {
-    color: colors.textMuted,
-    fontSize: 13,
-  },
-  trashButton: {
-    alignItems: 'center',
-    borderColor: colors.border,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    justifyContent: 'center',
-    minHeight: 36,
-    minWidth: 52,
-    paddingHorizontal: spacing.sm,
-  },
-  trashButtonPressed: {
-    opacity: 0.7,
   },
   actionGroup: {
     gap: spacing.sm,
