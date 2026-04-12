@@ -1,6 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
-
-import { colors, spacing } from '@/constants/theme';
+import { Text, View } from 'react-native';
 
 export function EmptyState({
   title,
@@ -10,31 +8,9 @@ export function EmptyState({
   body: string;
 }) {
   return (
-    <View style={styles.wrap}>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.body}>{body}</Text>
+    <View className="items-center justify-center px-5 py-10">
+      <Text className="mb-1.5 text-center text-[20px] font-bold text-appText">{title}</Text>
+      <Text className="text-center text-[15px] leading-[22px] text-appMuted">{body}</Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xxl,
-  },
-  title: {
-    color: colors.text,
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: spacing.xs,
-    textAlign: 'center',
-  },
-  body: {
-    color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
-    textAlign: 'center',
-  },
-});

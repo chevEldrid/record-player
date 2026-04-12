@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, Text, View } from 'react-native';
 
-import { colors, radii } from '@/constants/theme';
+import { radii } from '@/constants/theme';
 import { useAppData } from '@/contexts/AppDataContext';
 
 type Props = {
@@ -44,11 +44,11 @@ export function DriveImage({ uri, label, size = 72, rounded = false }: Props) {
   if (!resolvedUri) {
     return (
       <View
-        style={[
-          styles.placeholder,
-          { height: size, width: size, borderRadius: rounded ? size / 2 : radii.md },
-        ]}>
-        <Text style={styles.placeholderText}>{label.slice(0, 1).toUpperCase()}</Text>
+        className="items-center justify-center bg-appCardAlt"
+        style={{ height: size, width: size, borderRadius: rounded ? size / 2 : radii.md }}>
+        <Text className="text-[28px] font-bold text-appText">
+          {label.slice(0, 1).toUpperCase()}
+        </Text>
       </View>
     );
   }
@@ -64,16 +64,3 @@ export function DriveImage({ uri, label, size = 72, rounded = false }: Props) {
     />
   );
 }
-
-const styles = StyleSheet.create({
-  placeholder: {
-    alignItems: 'center',
-    backgroundColor: colors.cardAlt,
-    justifyContent: 'center',
-  },
-  placeholderText: {
-    color: colors.text,
-    fontSize: 28,
-    fontWeight: '700',
-  },
-});

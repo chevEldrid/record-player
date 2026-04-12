@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   View,
   useWindowDimensions,
@@ -14,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AlbumCard } from '@/components/AlbumCard';
 import { FLOATING_NAV_HEIGHT } from '@/components/FloatingBottomNav';
 import { ScreenShell } from '@/components/ScreenShell';
-import { colors, radii, spacing } from '@/constants/theme';
+import { colors } from '@/constants/theme';
 import { useAppData } from '@/contexts/AppDataContext';
 import type { Album } from '@/domain/models';
 
@@ -60,13 +59,24 @@ function AddAlbumTile({
   return (
     <Pressable
       accessibilityRole="button"
+      className="overflow-hidden rounded-lg border border-[#8B5B2F] bg-[#E6D0B0]"
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.addTile,
-        { width: size, height: size },
-        pressed && styles.addTilePressed,
-      ]}>
-      <Text style={styles.addTilePlus}>+</Text>
+      style={({ pressed }) => ({
+        shadowColor: 'rgba(43, 25, 10, 0.08)',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 1,
+        shadowRadius: 16,
+        height: size,
+        transform: [{ scale: pressed ? 0.98 : 1 }],
+        width: size,
+      })}>
+      <View className="flex-1 items-center justify-center p-0">
+        <View
+          className="items-center justify-center rounded-appMd bg-appCardAlt"
+          style={{ height: size, width: size }}>
+          <Text className="text-[42px] font-[200] leading-[44px] text-[#7A4A20]">+</Text>
+        </View>
+      </View>
     </Pressable>
   );
 }
@@ -104,32 +114,37 @@ export default function LibraryScreen() {
 
   return (
     <ScreenShell bottomNav extendBehindBottomNav padded={false}>
-      {isSyncing ? <Text style={styles.syncing}>Syncing pending uploads...</Text> : null}
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {isSyncing ? <Text className="px-4 pt-2.5 text-[13px] text-appAccent">Syncing pending uploads...</Text> : null}
+      {error ? <Text className="px-4 pt-2.5 text-[13px] text-appDanger">{error}</Text> : null}
 
       {status === 'loading' && !albums.length ? (
-        <View style={styles.loader}>
+        <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={colors.text} size="large" />
         </View>
       ) : (
         <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+          className="flex-1 bg-[#C78E4A]"
+          contentContainerStyle={{ backgroundColor: '#C78E4A', flexGrow: 1, paddingBottom: 0 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
-          <View style={[styles.bookshelf, { minHeight: minimumShelfHeight }]}>
+          <View
+            className="flex-1 overflow-hidden bg-[#C78E4A] px-4 pt-5"
+            style={{ minHeight: minimumShelfHeight, paddingBottom: FLOATING_NAV_HEIGHT + 28 }}>
             {shelfRows.map((row, rowIndex) => (
-              <View key={`row-${rowIndex}`} style={styles.shelfSection}>
-                <View style={styles.shelfBack} />
-                <View style={styles.row}>
+              <View key={`row-${rowIndex}`} className="relative mb-5 min-h-[188px] flex-1">
+                <View
+                  className="absolute inset-x-0 top-0 rounded-t-[10px] border-x-[8px] border-x-[rgba(90,51,23,0.15)] bg-[#D8A161]"
+                  style={{ bottom: 18 }}
+                />
+                <View className="flex-row justify-evenly px-2.5 pt-4">
                   {fillShelfRow(row, shelfColumns).map((album) => (
-                    <View key={album.id} style={styles.bookSlot}>
+                    <View key={album.id} className="flex-1 items-center">
                       {album.id.startsWith('empty-shelf-') ||
                         album.id.startsWith('shelf-spacer-') ? (
                         <View style={{ width: coverSize, height: coverSize }} />
                       ) : album.id === 'create-album-tile' ? (
                         <AddAlbumTile
-                          onPress={() => router.push('/modals/create-album')}
+                          onPress={() => router.push('/albums/new')}
                           size={coverSize}
                         />
                       ) : (
@@ -147,7 +162,7 @@ export default function LibraryScreen() {
                     </View>
                   ))}
                 </View>
-                <View style={styles.shelfLip} />
+                <View className="mt-2.5 h-[18px] rounded-lg border-b-4 border-b-[#8C5422] bg-[#B77935]" />
               </View>
             ))}
           </View>
@@ -156,98 +171,3 @@ export default function LibraryScreen() {
     </ScreenShell>
   );
 }
-
-const styles = StyleSheet.create({
-  syncing: {
-    color: colors.accent,
-    fontSize: 13,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-  },
-  error: {
-    color: colors.danger,
-    fontSize: 13,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-  },
-  loader: {
-    alignItems: 'center',
-    flex: 1,
-    justifyContent: 'center',
-  },
-  scrollContent: {
-    backgroundColor: '#C78E4A',
-    flexGrow: 1,
-    paddingBottom: 0,
-  },
-  scrollView: {
-    backgroundColor: '#C78E4A',
-    flex: 1,
-  },
-  bookshelf: {
-    backgroundColor: '#C78E4A',
-    flex: 1,
-    overflow: 'hidden',
-    paddingBottom: FLOATING_NAV_HEIGHT + spacing.xl,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.lg,
-  },
-  shelfSection: {
-    flex: 1,
-    marginBottom: spacing.lg,
-    minHeight: 188,
-    position: 'relative',
-  },
-  shelfBack: {
-    backgroundColor: '#D8A161',
-    borderColor: 'rgba(90, 51, 23, 0.15)',
-    borderLeftWidth: 8,
-    borderRightWidth: 8,
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
-    bottom: 18,
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    top: 0,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-evenly',
-    paddingHorizontal: spacing.sm,
-    paddingTop: spacing.md,
-  },
-  bookSlot: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  shelfLip: {
-    backgroundColor: '#B77935',
-    borderBottomColor: '#8C5422',
-    borderBottomWidth: 4,
-    borderRadius: 8,
-    height: 18,
-    marginTop: spacing.sm,
-  },
-  addTile: {
-    alignItems: 'center',
-    backgroundColor: '#E8D1B0',
-    borderColor: '#8B5B2F',
-    borderRadius: 10,
-    borderWidth: 1,
-    justifyContent: 'center',
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 1,
-    shadowRadius: 16,
-  },
-  addTilePressed: {
-    transform: [{ scale: 0.98 }],
-  },
-  addTilePlus: {
-    color: '#7A4A20',
-    fontSize: 42,
-    fontWeight: '200',
-    lineHeight: 44,
-  },
-});

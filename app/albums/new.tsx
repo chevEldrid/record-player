@@ -1,16 +1,15 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 
 import { DriveImage } from '@/components/DriveImage';
 import { LabeledField } from '@/components/LabeledField';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenShell } from '@/components/ScreenShell';
-import { colors, spacing } from '@/constants/theme';
 import { useAppData } from '@/contexts/AppDataContext';
 
-export default function CreateAlbumModal() {
+export default function NewAlbumScreen() {
   const router = useRouter();
   const { createAlbum } = useAppData();
   const [name, setName] = useState('');
@@ -36,8 +35,11 @@ export default function CreateAlbumModal() {
 
     setSaving(true);
     try {
-      await createAlbum({ name, imageUri });
-      router.back();
+      const created = await createAlbum({ name, imageUri });
+      router.replace({
+        pathname: '/albums/[albumId]',
+        params: { albumId: created.id },
+      });
     } catch (error) {
       Alert.alert(
         'Could not create album',
@@ -49,50 +51,33 @@ export default function CreateAlbumModal() {
   }
 
   return (
-    <ScreenShell scroll>
-      <Text style={styles.title}>Create a new album</Text>
-      <Text style={styles.subtitle}>
-        Each album represents one person and holds every track recorded for them.
-      </Text>
-
-      <View style={styles.preview}>
-        <DriveImage label={name || 'A'} size={120} uri={imageUri} />
+    <ScreenShell bottomNav scroll>
+      <View className="items-center gap-4 px-4 pt-5">
+        <View className="rounded-appLg border border-appBorder bg-appCard p-4">
+          <DriveImage label={name || 'A'} size={104} uri={imageUri} />
+        </View>
+        <Text className="text-center text-[26px] font-extrabold text-appText">
+          Create a new album
+        </Text>
       </View>
 
-      <LabeledField
-        label="Person name"
-        onChangeText={setName}
-        placeholder="For example: Grandma Rosa"
-        value={name}
-      />
+      <View className="gap-5 px-4">
+        <Text className="text-[15px] leading-[22px] text-appMuted">
+          Each album represents one person and holds every track recorded for them.
+        </Text>
 
-      <View style={styles.actionStack}>
-        <PrimaryButton label="Choose Picture" onPress={chooseImage} variant="secondary" />
-        <PrimaryButton label="Create Album" loading={saving} onPress={submit} />
+        <LabeledField
+          label="Person name"
+          onChangeText={setName}
+          placeholder="For example: Grandma Rosa"
+          value={name}
+        />
+
+        <View className="gap-2">
+          <PrimaryButton label="Choose Picture" onPress={chooseImage} variant="secondary" />
+          <PrimaryButton label="Create Album" loading={saving} onPress={submit} />
+        </View>
       </View>
     </ScreenShell>
   );
 }
-
-const styles = StyleSheet.create({
-  title: {
-    color: colors.text,
-    fontSize: 26,
-    fontWeight: '800',
-  },
-  subtitle: {
-    color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: spacing.lg,
-    marginTop: spacing.xs,
-  },
-  preview: {
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  actionStack: {
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-});

@@ -1,3 +1,5 @@
+import '../global.css';
+
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
@@ -25,11 +27,8 @@ export default function RootLayout() {
             <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
             <Stack.Screen name="terms-of-service" options={{ headerShown: false }} />
             <Stack.Screen name="(app)" options={{ headerShown: false }} />
+            <Stack.Screen name="albums/new" options={{ headerShown: false }} />
             <Stack.Screen name="albums/[albumId]" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="modals/create-album"
-              options={{ presentation: 'modal', title: 'New Album' }}
-            />
             <Stack.Screen
               name="modals/track-details"
               options={{ presentation: 'modal', title: '' }}

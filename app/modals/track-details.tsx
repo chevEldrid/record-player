@@ -2,14 +2,13 @@ import * as ImagePicker from 'expo-image-picker';
 import { Audio } from 'expo-av';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 
 import { DriveImage } from '@/components/DriveImage';
 import { LabeledField } from '@/components/LabeledField';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenShell } from '@/components/ScreenShell';
 import { WarningBadge } from '@/components/WarningBadge';
-import { colors, radii, spacing } from '@/constants/theme';
 import { useAppData } from '@/contexts/AppDataContext';
 import { formatDisplayDateOnly, toDateInputValue } from '@/utils/date';
 
@@ -41,8 +40,10 @@ export default function TrackDetailsModal() {
   if (!album || !track) {
     return (
       <ScreenShell>
-        <Text style={styles.title}>Track unavailable</Text>
-        <Text style={styles.subtitle}>This track could not be loaded.</Text>
+        <Text className="text-[26px] font-extrabold text-appText">Track unavailable</Text>
+        <Text className="mb-5 mt-1.5 text-[15px] text-appMuted">
+          This track could not be loaded.
+        </Text>
       </ScreenShell>
     );
   }
@@ -124,18 +125,22 @@ export default function TrackDetailsModal() {
 
   return (
     <ScreenShell scroll>
-      <Text style={styles.title}>{track.title}</Text>
-      <Text style={styles.subtitle}>{formatDisplayDateOnly(currentTrack.recordedAt)}</Text>
+      <Text className="text-[26px] font-extrabold text-appText">{track.title}</Text>
+      <Text className="mb-5 mt-1.5 text-[15px] text-appMuted">
+        {formatDisplayDateOnly(currentTrack.recordedAt)}
+      </Text>
 
-      <Pressable onPress={togglePlayback} style={styles.heroArt}>
+      <Pressable className="relative mb-5 self-center" onPress={togglePlayback}>
         <DriveImage label={currentTrack.title} size={180} uri={imageUri} />
-        <View style={styles.playOverlay}>
-          <Text style={styles.playIcon}>{isPlaying ? 'II' : '▶'}</Text>
+        <View className="absolute h-[62px] w-[62px] items-center justify-center rounded-full bg-[rgba(33,26,20,0.24)]">
+          <Text className="ml-1 text-2xl font-bold text-white">
+            {isPlaying ? 'II' : '▶'}
+          </Text>
         </View>
       </Pressable>
 
       {warnings.length ? (
-        <View style={styles.warningWrap}>
+        <View className="mb-5 flex-row flex-wrap gap-1.5">
           {warnings.map((warning) => (
             <WarningBadge key={warning} warning={warning} />
           ))}
@@ -159,53 +164,8 @@ export default function TrackDetailsModal() {
       />
       <LabeledField label="Notes" multiline onChangeText={setNotes} value={notes} />
 
-      <View style={styles.saveSpacer} />
+      <View className="h-5" />
       <PrimaryButton label="Save" loading={saving} onPress={saveChanges} />
     </ScreenShell>
   );
 }
-
-const styles = StyleSheet.create({
-  title: {
-    color: colors.text,
-    fontSize: 26,
-    fontWeight: '800',
-  },
-  subtitle: {
-    color: colors.textMuted,
-    fontSize: 15,
-    marginBottom: spacing.lg,
-    marginTop: spacing.xs,
-  },
-  heroArt: {
-    alignItems: 'center',
-    alignSelf: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.lg,
-    position: 'relative',
-  },
-  playOverlay: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(33, 26, 20, 0.24)',
-    borderRadius: 999,
-    height: 62,
-    justifyContent: 'center',
-    position: 'absolute',
-    width: 62,
-  },
-  playIcon: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '700',
-    marginLeft: 4,
-  },
-  warningWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-    marginBottom: spacing.lg,
-  },
-  saveSpacer: {
-    height: spacing.lg,
-  },
-});

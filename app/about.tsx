@@ -1,40 +1,34 @@
 import { Link } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text } from 'react-native';
 
-import { ScreenShell } from '@/components/ScreenShell';
+import { ContentBody, ContentPage, ContentSection } from '@/components/ContentPage';
 import {
   APP_NAME,
   DRIVE_ALBUMS_FOLDER_NAME,
   DRIVE_ROOT_NAME,
 } from '@/constants/config';
-import { colors, spacing } from '@/constants/theme';
 
 export default function AboutScreen() {
   return (
-    <ScreenShell scroll>
-      <Link href="/" style={styles.backLink}>
-        ←
-      </Link>
-
-      <View style={styles.section}>
-        <Text style={styles.title}>About {APP_NAME}</Text>
-        <Text style={styles.body}>
+    <ContentPage title={`About ${APP_NAME}`}>
+      <ContentSection>
+        <ContentBody>
           Pershie is an app for recording and organizing human histories. Each
           person is represented as an album, and each recording is stored as a track.
-        </Text>
-      </View>
+        </ContentBody>
+      </ContentSection>
 
-      <View style={styles.section}>
-        <Text style={styles.heading}>How it works</Text>
-        <Text style={styles.body}>
+      <ContentSection heading="How it works">
+        <ContentBody>
           After signing in with Google and pointing Pershie to your personal library, Pershie takes care of the rest.
           All recordings are saved on your drive with appropriate metadata and can be deleted, edited, updated, or imported completely outside of this application with no issues.
-        </Text>
-      </View>
+        </ContentBody>
+      </ContentSection>
 
-      <View style={styles.section}>
-        <Text style={styles.heading}>Library structure</Text>
-        <Text style={styles.mono}>
+      <ContentSection heading="Library structure">
+        <Text
+          className="rounded-appMd border border-appBorder bg-appBgElevated p-4 text-[13px] leading-[22px] text-appText"
+          style={{ fontFamily: 'monospace' }}>
           {DRIVE_ROOT_NAME}
           {'\n'}  {DRIVE_ALBUMS_FOLDER_NAME}
           {'\n'}    {'{person-slug-id}'}
@@ -44,66 +38,19 @@ export default function AboutScreen() {
           {'\n'}        {'{track-title-id}'}.json
           {'\n'}      attachments/
         </Text>
-      </View>
+      </ContentSection>
 
-      <View style={styles.section}>
-        <Text style={styles.heading}>What Pershie stores</Text>
-        <Text style={styles.body}>
+      <ContentSection heading="What Pershie stores">
+        <ContentBody>
           Nothing - you keep all your own data.
-        </Text>
-      </View>
+        </ContentBody>
+      </ContentSection>
 
-      <View style={styles.section}>
-        <Text style={styles.heading}>About the Author</Text>
-        <Link href="https://github.com/chevEldrid" style={styles.authorLink}>
+      <ContentSection heading="About the Author">
+        <Link className="text-[15px] font-bold text-appAccent" href="https://github.com/chevEldrid">
           github.com/chevEldrid
         </Link>
-      </View>
-    </ScreenShell>
+      </ContentSection>
+    </ContentPage>
   );
 }
-
-const styles = StyleSheet.create({
-  backLink: {
-    color: colors.text,
-    fontSize: 32,
-    fontWeight: '400',
-    lineHeight: 32,
-    marginBottom: spacing.lg,
-  },
-  section: {
-    gap: spacing.sm,
-    marginBottom: spacing.xl,
-  },
-  title: {
-    color: colors.text,
-    fontSize: 30,
-    fontWeight: '800',
-  },
-  heading: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  body: {
-    color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 24,
-  },
-  authorLink: {
-    color: colors.accent,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  mono: {
-    backgroundColor: colors.backgroundElevated,
-    borderColor: colors.border,
-    borderRadius: 16,
-    borderWidth: 1,
-    color: colors.text,
-    fontFamily: 'monospace',
-    fontSize: 13,
-    lineHeight: 22,
-    padding: spacing.md,
-  },
-});

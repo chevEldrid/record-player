@@ -1,9 +1,10 @@
 import { Audio } from 'expo-av';
 import { Trash2 } from 'lucide-react-native';
 import { PropsWithChildren, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
-import { colors, radii, spacing } from '@/constants/theme';
+import { AppCard } from '@/components/AppCard';
+import { colors } from '@/constants/theme';
 
 type Props = PropsWithChildren<{
   fileName: string;
@@ -75,109 +76,43 @@ export function RecordedFileCard({
   }
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>{title}</Text>
-      <View style={styles.fileRow}>
+    <AppCard className="gap-4 p-5">
+      <Text className="text-base font-extrabold text-appText">{title}</Text>
+      <View className="flex-row items-center gap-4">
         <Pressable
           accessibilityLabel={isPreviewPlaying ? 'Stop playback' : 'Play recording'}
           accessibilityRole="button"
           onPress={() => void togglePreviewPlayback()}
-          style={({ pressed }) => [styles.fileGlyph, pressed && styles.fileGlyphPressed]}>
-          <View style={styles.fileGlyphFold} />
-          <Text style={styles.fileGlyphIcon}>{isPreviewPlaying ? '■' : '▶'}</Text>
+          className="relative h-[58px] w-12 items-center justify-center overflow-hidden rounded-appMd border border-appBorder bg-appCardAlt"
+          style={({ pressed }) => ({
+            opacity: pressed ? 0.72 : 1,
+          })}>
+          <View
+            className="absolute right-0 top-0 h-3.5 w-3.5 bg-appBg"
+            style={{ transform: [{ rotate: '45deg' }, { translateX: 7 }, { translateY: -7 }] }}
+          />
+          <Text className="ml-0.5 text-[18px] font-bold text-appText">
+            {isPreviewPlaying ? '■' : '▶'}
+          </Text>
         </Pressable>
-        <View style={styles.fileMeta}>
-          <Text numberOfLines={1} style={styles.fileMetaName}>
+        <View className="flex-1 gap-1">
+          <Text className="text-sm font-bold text-appText" numberOfLines={1}>
             {fileName}
           </Text>
-          <Text style={styles.fileMetaStamp}>{recordedAtLabel}</Text>
+          <Text className="text-[13px] text-appMuted">{recordedAtLabel}</Text>
         </View>
         <Pressable
           accessibilityLabel="Discard recording"
           accessibilityRole="button"
           onPress={onDiscard}
-          style={({ pressed }) => [styles.trashButton, pressed && styles.trashButtonPressed]}>
+          className="min-h-9 min-w-[52px] items-center justify-center rounded-full border border-appBorder px-2.5"
+          style={({ pressed }) => ({
+            opacity: pressed ? 0.7 : 1,
+          })}>
           <Trash2 color={colors.textMuted} size={16} strokeWidth={2} />
         </Pressable>
       </View>
       {children}
-    </View>
+    </AppCard>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.card,
-    borderColor: colors.border,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    gap: spacing.md,
-    padding: spacing.lg,
-  },
-  cardTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  fileRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  fileGlyph: {
-    alignItems: 'center',
-    backgroundColor: colors.cardAlt,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    height: 58,
-    justifyContent: 'center',
-    overflow: 'hidden',
-    position: 'relative',
-    width: 48,
-  },
-  fileGlyphFold: {
-    backgroundColor: colors.background,
-    height: 14,
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    transform: [{ rotate: '45deg' }, { translateX: 7 }, { translateY: -7 }],
-    width: 14,
-  },
-  fileGlyphIcon: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: '700',
-    marginLeft: 2,
-  },
-  fileGlyphPressed: {
-    opacity: 0.72,
-  },
-  fileMeta: {
-    flex: 1,
-    gap: 4,
-  },
-  fileMetaName: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  fileMetaStamp: {
-    color: colors.textMuted,
-    fontSize: 13,
-  },
-  trashButton: {
-    alignItems: 'center',
-    borderColor: colors.border,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    justifyContent: 'center',
-    minHeight: 36,
-    minWidth: 52,
-    paddingHorizontal: spacing.sm,
-  },
-  trashButtonPressed: {
-    opacity: 0.7,
-  },
-});
