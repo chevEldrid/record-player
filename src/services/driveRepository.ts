@@ -493,9 +493,6 @@ export class DriveRepository {
       if (!metadata) {
         warnings.push('missing-track-metadata');
       }
-      if (!audioFile) {
-        warnings.push('missing-audio-file');
-      }
       if (metadataRecord && !metadata) {
         warnings.push('orphan-metadata');
       }

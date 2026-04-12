@@ -5,11 +5,13 @@ import { useRouter } from 'expo-router';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenShell } from '@/components/ScreenShell';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePwa } from '@/contexts/PwaContext';
 import { colors, radii, spacing } from '@/constants/theme';
 
 export default function IndexScreen() {
   const router = useRouter();
   const { status } = useAuth();
+  const { canInstall, install, isInstalled } = usePwa();
 
   if (status === 'loading') {
     return null;
@@ -36,10 +38,13 @@ export default function IndexScreen() {
 
       <View style={styles.actions}>
         <PrimaryButton label="Open Recorder" onPress={() => router.push('/offline-record')} />
+        {canInstall ? (
+          <PrimaryButton label="Install App" onPress={() => void install()} variant="secondary" />
+        ) : null}
         <PrimaryButton
           label="Sign In to Sync"
           onPress={() => router.push('/auth/sign-in')}
-          variant="secondary"
+          variant={canInstall ? 'primary' : 'secondary'}
         />
       </View>
 
@@ -52,6 +57,22 @@ export default function IndexScreen() {
         <Text style={styles.cardBody}>
           Or sign in with Google and organize everything directly into albums in your Drive.
         </Text>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>
+          {isInstalled ? 'Installed on this device' : 'Installable as an app'}
+        </Text>
+        <Text style={styles.cardBody}>
+          Pershie can launch in its own standalone window, keep the recorder available if your
+          connection drops, and let people download recordings even while offline.
+        </Text>
+        {!canInstall && !isInstalled ? (
+          <Text style={styles.cardBody}>
+            If your browser does not show an install button, open the browser menu and choose Add
+            to Home Screen or Install App.
+          </Text>
+        ) : null}
       </View>
     </ScreenShell>
   );

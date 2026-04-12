@@ -10,6 +10,7 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenShell } from '@/components/ScreenShell';
 import { colors, radii, spacing } from '@/constants/theme';
 import { useAppData } from '@/contexts/AppDataContext';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import {
   formatDisplayDate,
   formatTimestampFileLabel,
@@ -39,6 +40,7 @@ function extensionForMimeType(mimeType: string) {
 export default function RecordScreen() {
   const params = useLocalSearchParams<{ albumId?: string }>();
   const { albums, pendingUploads, saveTrack } = useAppData();
+  const { isOnline } = useNetworkStatus();
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | undefined>(params.albumId);
   const [title, setTitle] = useState('');
   const [tagsText, setTagsText] = useState('');
@@ -129,6 +131,14 @@ export default function RecordScreen() {
   }
 
   async function saveCurrentRecording() {
+    if (!isOnline) {
+      Alert.alert(
+        'Connection lost',
+        'Save to Album is unavailable while you are offline. Download the recording instead and upload it later.'
+      );
+      return;
+    }
+
     if (!selectedAlbumId) {
       Alert.alert('Select an album', 'Choose where this recording should live first.');
       return;
@@ -284,8 +294,17 @@ export default function RecordScreen() {
                   placeholder="Context, prompts, or details to remember."
                   value={notes}
                 />
+                {!isOnline ? (
+                  <View style={styles.offlineNotice}>
+                    <Text style={styles.offlineNoticeTitle}>You&apos;re offline</Text>
+                    <Text style={styles.offlineNoticeBody}>
+                      You are currently offline. Syncing is currently disabled.
+                    </Text>
+                  </View>
+                ) : null}
                 <View style={styles.actionGroup}>
                   <PrimaryButton
+                    disabled={!isOnline}
                     label="Save to Album"
                     loading={saving}
                     onPress={saveCurrentRecording}
@@ -489,6 +508,24 @@ const styles = StyleSheet.create({
   },
   actionGroup: {
     gap: spacing.sm,
+  },
+  offlineNotice: {
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    gap: spacing.xs,
+    padding: spacing.md,
+  },
+  offlineNoticeBody: {
+    color: colors.textMuted,
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  offlineNoticeTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
   },
   pendingNote: {
     color: colors.accent,

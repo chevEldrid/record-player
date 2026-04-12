@@ -1,16 +1,21 @@
-const CACHE_NAME = 'pershie-shell-v1';
+const CACHE_NAME = 'pershie-shell-v2';
 const APP_SHELL = [
   '/',
   '/manifest.json',
-  '/favicon.ico',
   '/icon-192.png',
   '/icon-512.png',
   '/apple-touch-icon.png',
+  '/sw.js',
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())
+    caches
+      .open(CACHE_NAME)
+      .then((cache) =>
+        Promise.all(APP_SHELL.map((asset) => cache.add(asset).catch(() => undefined)))
+      )
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -37,9 +42,15 @@ self.addEventListener('fetch', (event) => {
 
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(async () => {
-        return (await caches.match(event.request)) || (await caches.match('/'));
-      })
+      fetch(event.request)
+        .then((response) => {
+          const cloned = response.clone();
+          void caches.open(CACHE_NAME).then((cache) => cache.put(event.request, cloned));
+          return response;
+        })
+        .catch(async () => {
+          return (await caches.match(event.request)) || (await caches.match('/'));
+        })
     );
     return;
   }
@@ -51,19 +62,23 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
+      const networkFetch = fetch(event.request)
+        .then((response) => {
+          if (!response.ok) {
+            return response;
+          }
+
+          const cloned = response.clone();
+          void caches.open(CACHE_NAME).then((cache) => cache.put(event.request, cloned));
+          return response;
+        })
+        .catch(() => cached);
+
       if (cached) {
-        return cached;
+        return networkFetch.then((response) => response || cached);
       }
 
-      return fetch(event.request).then((response) => {
-        if (!response.ok) {
-          return response;
-        }
-
-        const cloned = response.clone();
-        void caches.open(CACHE_NAME).then((cache) => cache.put(event.request, cloned));
-        return response;
-      });
+      return networkFetch.then(async (response) => response || (await caches.match('/')));
     })
   );
 });

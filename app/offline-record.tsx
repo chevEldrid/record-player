@@ -1,5 +1,6 @@
 import { Audio } from 'expo-av';
 import { Trash2 } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   Alert,
@@ -36,6 +37,7 @@ function extensionForMimeType(mimeType: string) {
 }
 
 export default function OfflineRecordScreen() {
+  const router = useRouter();
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [recordedUri, setRecordedUri] = useState<string>();
   const [recordedAt, setRecordedAt] = useState<string>();
@@ -161,62 +163,82 @@ export default function OfflineRecordScreen() {
   return (
     <ScreenShell padded>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.heroRecorder}>
-          <Pressable
-            disabled={Boolean(recordedUri) && !recording}
-            onPress={recording ? stopRecording : startRecording}
-            style={({ pressed }) => [
-              styles.recordButton,
-              recording && styles.recordButtonActive,
-              recordedUri && !recording && styles.recordButtonDisabled,
-              pressed && styles.recordButtonPressed,
-            ]}>
-            <View
-              style={[
-                styles.recordButtonCore,
-                recording && styles.recordButtonCoreLive,
-                recording && {
-                  transform: [{ scale: 1 + audioLevel * 0.18 }],
-                  opacity: 0.75 + audioLevel * 0.25,
-                },
-              ]}
-            />
-          </Pressable>
-        </View>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+              return;
+            }
 
-        {recordedUri ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Recorded File</Text>
-            <View style={styles.fileRow}>
-              <View style={styles.fileGlyph}>
-                <View style={styles.fileGlyphFold} />
-              </View>
-              <View style={styles.fileMeta}>
-                <Text numberOfLines={1} style={styles.fileMetaName}>
-                  {resolvedName}.{extension}
-                </Text>
-                <Text style={styles.fileMetaStamp}>{formatDisplayDate(recordedAt)}</Text>
-              </View>
-              <Pressable
-                accessibilityLabel="Discard recording"
-                accessibilityRole="button"
-                onPress={() => setConfirmDiscardOpen(true)}
-                style={({ pressed }) => [
-                  styles.trashButton,
-                  pressed && styles.trashButtonPressed,
-                ]}>
-                <Trash2 color={colors.textMuted} size={16} strokeWidth={2} />
-              </Pressable>
-            </View>
-            <LabeledField
-              label="File name"
-              onChangeText={setFileName}
-              placeholder={formatTimestampFileLabel(recordedAt)}
-              value={fileName}
-            />
-            <PrimaryButton label="Save to Device" loading={saving} onPress={saveCurrentRecording} />
+            router.replace('/');
+          }}
+          style={styles.backLinkWrap}>
+          <Text style={styles.backLink}>←</Text>
+        </Pressable>
+
+        <View style={styles.mainContent}>
+          <View style={styles.heroRecorder}>
+            <Pressable
+              disabled={Boolean(recordedUri) && !recording}
+              onPress={recording ? stopRecording : startRecording}
+              style={({ pressed }) => [
+                styles.recordButton,
+                recording && styles.recordButtonActive,
+                recordedUri && !recording && styles.recordButtonDisabled,
+                pressed && styles.recordButtonPressed,
+              ]}>
+              <View
+                style={[
+                  styles.recordButtonCore,
+                  recording && styles.recordButtonCoreLive,
+                  recording && {
+                    transform: [{ scale: 1 + audioLevel * 0.18 }],
+                    opacity: 0.75 + audioLevel * 0.25,
+                  },
+                ]}
+              />
+            </Pressable>
           </View>
-        ) : null}
+
+          {recordedUri ? (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Recorded File</Text>
+              <View style={styles.fileRow}>
+                <View style={styles.fileGlyph}>
+                  <View style={styles.fileGlyphFold} />
+                </View>
+                <View style={styles.fileMeta}>
+                  <Text numberOfLines={1} style={styles.fileMetaName}>
+                    {resolvedName}.{extension}
+                  </Text>
+                  <Text style={styles.fileMetaStamp}>{formatDisplayDate(recordedAt)}</Text>
+                </View>
+                <Pressable
+                  accessibilityLabel="Discard recording"
+                  accessibilityRole="button"
+                  onPress={() => setConfirmDiscardOpen(true)}
+                  style={({ pressed }) => [
+                    styles.trashButton,
+                    pressed && styles.trashButtonPressed,
+                  ]}>
+                  <Trash2 color={colors.textMuted} size={16} strokeWidth={2} />
+                </Pressable>
+              </View>
+              <LabeledField
+                label="File name"
+                onChangeText={setFileName}
+                placeholder={formatTimestampFileLabel(recordedAt)}
+                value={fileName}
+              />
+              <PrimaryButton
+                label="Save to Device"
+                loading={saving}
+                onPress={saveCurrentRecording}
+              />
+            </View>
+          ) : null}
+        </View>
       </ScrollView>
 
       <Modal animationType="fade" transparent visible={confirmDiscardOpen}>
@@ -248,12 +270,26 @@ export default function OfflineRecordScreen() {
 }
 
 const styles = StyleSheet.create({
+  backLink: {
+    color: colors.text,
+    fontSize: 32,
+    fontWeight: '400',
+    lineHeight: 32,
+  },
+  backLinkWrap: {
+    alignSelf: 'flex-start',
+    marginBottom: spacing.lg,
+  },
   content: {
     alignItems: 'stretch',
     flexGrow: 1,
     gap: spacing.lg,
-    justifyContent: 'center',
     paddingBottom: spacing.xl,
+  },
+  mainContent: {
+    flex: 1,
+    gap: spacing.lg,
+    justifyContent: 'center',
   },
   heroRecorder: {
     alignItems: 'center',
@@ -297,6 +333,24 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 16,
     fontWeight: '800',
+  },
+  helperBody: {
+    color: colors.textMuted,
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  helperCard: {
+    backgroundColor: colors.cardAlt,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    gap: spacing.xs,
+    padding: spacing.md,
+  },
+  helperTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
   },
   fileRow: {
     alignItems: 'center',

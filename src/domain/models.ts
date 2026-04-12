@@ -29,7 +29,6 @@ export type DrivePointers = {
 export type WarningCode =
   | 'missing-album-metadata'
   | 'missing-track-metadata'
-  | 'missing-audio-file'
   | 'missing-track-title'
   | 'missing-recorded-at'
   | 'pending-upload'

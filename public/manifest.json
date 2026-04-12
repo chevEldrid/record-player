@@ -5,21 +5,27 @@
   "description": "Preserve personal-history audio in a browser-first collection backed by Google Drive.",
   "start_url": "/",
   "scope": "/",
+  "display_override": ["window-controls-overlay", "standalone"],
   "display": "standalone",
   "orientation": "portrait",
   "theme_color": "#F7F1E8",
   "background_color": "#FFF9F2",
+  "lang": "en-US",
+  "dir": "ltr",
+  "prefer_related_applications": false,
   "categories": ["music", "lifestyle", "productivity"],
   "icons": [
     {
       "src": "/icon-192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
       "src": "/icon-512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
     },
     {
       "src": "/apple-touch-icon.png",
