@@ -1,146 +1,64 @@
-import { Audio } from 'expo-av';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import {
-  Alert,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { LabeledField } from '@/components/LabeledField';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { RecordedFileCard } from '@/components/RecordedFileCard';
+import { RecorderButton } from '@/components/RecorderButton';
 import { ScreenShell } from '@/components/ScreenShell';
-import { colors, radii, spacing } from '@/constants/theme';
-import {
-  formatDisplayDate,
-  formatTimestampFileLabel,
-  toLocalTimestampMinute,
-} from '@/utils/date';
+import { useRecorder } from '@/hooks/useRecorder';
+import { formatDisplayDate, formatTimestampFileLabel } from '@/utils/date';
+import { downloadBlob, extensionForMimeType } from '@/utils/recording';
 import { slugify } from '@/utils/slug';
-
-function extensionForMimeType(mimeType: string) {
-  if (mimeType.includes('mpeg')) {
-    return 'mp3';
-  }
-
-  if (mimeType.includes('webm')) {
-    return 'webm';
-  }
-
-  return 'm4a';
-}
 
 export default function OfflineRecordScreen() {
   const router = useRouter();
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [recordedUri, setRecordedUri] = useState<string>();
-  const [recordedAt, setRecordedAt] = useState<string>();
-  const [recordedMimeType, setRecordedMimeType] = useState('audio/webm');
   const [fileName, setFileName] = useState('');
-  const [audioLevel, setAudioLevel] = useState(0);
   const [saving, setSaving] = useState(false);
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
+  const recorder = useRecorder({
+    clearDraft: () => {
+      setFileName('');
+    },
+    onRecorded: ({ recordedAt }) => {
+      setFileName(formatTimestampFileLabel(recordedAt));
+    },
+  });
 
-  function clearRecording() {
-    setRecordedUri(undefined);
-    setRecordedAt(undefined);
-    setFileName('');
-    setAudioLevel(0);
-  }
-
-  async function startRecording() {
-    const permission = await Audio.requestPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Microphone needed', 'Pershie needs microphone access to record.');
-      return;
+  async function handleStartRecording() {
+    try {
+      await recorder.startRecording();
+    } catch (error) {
+      Alert.alert(
+        'Microphone needed',
+        error instanceof Error ? error.message : 'Pershie needs microphone access to record.'
+      );
     }
-
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: true,
-      playsInSilentModeIOS: true,
-    });
-
-    const nextRecording = new Audio.Recording();
-    nextRecording.setProgressUpdateInterval(120);
-    nextRecording.setOnRecordingStatusUpdate((status) => {
-      if (!status.isRecording) {
-        setAudioLevel(0);
-        return;
-      }
-
-      if (typeof status.metering === 'number') {
-        const normalized = Math.min(Math.max((status.metering + 60) / 60, 0), 1);
-        setAudioLevel(normalized);
-        return;
-      }
-
-      setAudioLevel((current) => (current > 0.12 ? 0.06 : 0.18));
-    });
-    await nextRecording.prepareToRecordAsync({
-      ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
-      isMeteringEnabled: true,
-    });
-    await nextRecording.startAsync();
-    clearRecording();
-    setRecording(nextRecording);
-  }
-
-  async function stopRecording() {
-    if (!recording) {
-      return;
-    }
-
-    await recording.stopAndUnloadAsync();
-    const uri = recording.getURI();
-    const nextRecordedAt = toLocalTimestampMinute();
-    setRecording(null);
-    setAudioLevel(0);
-    setRecordedUri(uri ?? undefined);
-    setRecordedAt(nextRecordedAt);
-    setRecordedMimeType(Platform.OS === 'web' ? 'audio/webm' : 'audio/m4a');
-    setFileName(formatTimestampFileLabel(nextRecordedAt));
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: false,
-      playsInSilentModeIOS: true,
-    });
-  }
-
-  function downloadBlob(blob: Blob, nextFileName: string) {
-    const objectUrl = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = objectUrl;
-    link.download = nextFileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
   }
 
   async function saveCurrentRecording() {
-    if (!recordedUri) {
+    if (!recorder.recordedUri) {
       Alert.alert('Record first', 'Create audio before saving it to your device.');
       return;
     }
 
     setSaving(true);
     try {
-      const response = await fetch(recordedUri);
+      const response = await fetch(recorder.recordedUri);
       if (!response.ok) {
         throw new Error('Could not read the recorded audio.');
       }
 
       const audioBlob = await response.blob();
-      const extension = extensionForMimeType(recordedMimeType);
-      const resolvedName = slugify(fileName.trim()) || formatTimestampFileLabel(recordedAt);
+      const extension = extensionForMimeType(recorder.recordedMimeType);
+      const resolvedName =
+        slugify(fileName.trim()) || formatTimestampFileLabel(recorder.recordedAt);
 
       downloadBlob(audioBlob, `${resolvedName}.${extension}`);
-      clearRecording();
+      recorder.clearRecording();
+      setFileName('');
       Alert.alert(
         'Saved to device',
         extension === 'mp3'
@@ -157,14 +75,18 @@ export default function OfflineRecordScreen() {
     }
   }
 
-  const extension = extensionForMimeType(recordedMimeType);
-  const resolvedName = slugify(fileName.trim()) || formatTimestampFileLabel(recordedAt);
+  const extension = extensionForMimeType(recorder.recordedMimeType);
+  const resolvedName =
+    slugify(fileName.trim()) || formatTimestampFileLabel(recorder.recordedAt);
 
   return (
     <ScreenShell padded>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={{ alignItems: 'stretch', flexGrow: 1, gap: 20, paddingBottom: 28 }}
+        keyboardShouldPersistTaps="handled">
         <Pressable
           accessibilityRole="button"
+          className="self-start"
           onPress={() => {
             if (router.canGoBack()) {
               router.back();
@@ -172,45 +94,34 @@ export default function OfflineRecordScreen() {
             }
 
             router.replace('/');
-          }}
-          style={styles.backLinkWrap}>
-          <Text style={styles.backLink}>←</Text>
+          }}>
+          <Text className="text-[32px] leading-8 text-appText">←</Text>
         </Pressable>
 
-        <View style={styles.mainContent}>
-          <View style={styles.heroRecorder}>
-            <Pressable
-              disabled={Boolean(recordedUri) && !recording}
-              onPress={recording ? stopRecording : startRecording}
-              style={({ pressed }) => [
-                styles.recordButton,
-                recording && styles.recordButtonActive,
-                recordedUri && !recording && styles.recordButtonDisabled,
-                pressed && styles.recordButtonPressed,
-              ]}>
-              <View
-                style={[
-                  styles.recordButtonCore,
-                  recording && styles.recordButtonCoreLive,
-                  recording && {
-                    transform: [{ scale: 1 + audioLevel * 0.18 }],
-                    opacity: 0.75 + audioLevel * 0.25,
-                  },
-                ]}
-              />
-            </Pressable>
+        <View className="flex-1 justify-center gap-5">
+          <View className="items-center py-7">
+            <RecorderButton
+              activeBackgroundClassName="bg-[#F2CEC0]"
+              activeCoreClassName="bg-[#C9563B]"
+              audioLevel={recorder.audioLevel}
+              coreClassName="h-[78px] w-[78px] rounded-full bg-appText"
+              disabled={recorder.hasRecordedAudio && !recorder.isRecording}
+              isLive={recorder.isRecording}
+              onPress={recorder.isRecording ? recorder.stopRecording : handleStartRecording}
+              outerClassName="h-[148px] w-[148px] items-center justify-center rounded-full bg-[#F7E8DB]"
+            />
           </View>
 
-          {recordedUri ? (
+          {recorder.recordedUri ? (
             <RecordedFileCard
               fileName={`${resolvedName}.${extension}`}
               onDiscard={() => setConfirmDiscardOpen(true)}
-              recordedAtLabel={formatDisplayDate(recordedAt)}
-              recordedUri={recordedUri}>
+              recordedAtLabel={formatDisplayDate(recorder.recordedAt)}
+              recordedUri={recorder.recordedUri}>
               <LabeledField
                 label="File name"
                 onChangeText={setFileName}
-                placeholder={formatTimestampFileLabel(recordedAt)}
+                placeholder={formatTimestampFileLabel(recorder.recordedAt)}
                 value={fileName}
               />
               <PrimaryButton
@@ -223,111 +134,18 @@ export default function OfflineRecordScreen() {
         </View>
       </ScrollView>
 
-      <Modal animationType="fade" transparent visible={confirmDiscardOpen}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Discard recording?</Text>
-            <Text style={styles.modalBody}>
-              Are you sure you want to discard this recording?
-            </Text>
-            <View style={styles.modalActions}>
-              <PrimaryButton
-                label="Keep"
-                onPress={() => setConfirmDiscardOpen(false)}
-                variant="secondary"
-              />
-              <PrimaryButton
-                label="Discard"
-                onPress={() => {
-                  clearRecording();
-                  setConfirmDiscardOpen(false);
-                }}
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <ConfirmDialog
+        body="Are you sure you want to discard this recording?"
+        confirmLabel="Discard"
+        onCancel={() => setConfirmDiscardOpen(false)}
+        onConfirm={() => {
+          recorder.clearRecording();
+          setFileName('');
+          setConfirmDiscardOpen(false);
+        }}
+        open={confirmDiscardOpen}
+        title="Discard recording?"
+      />
     </ScreenShell>
   );
 }
-
-const styles = StyleSheet.create({
-  backLink: {
-    color: colors.text,
-    fontSize: 32,
-    fontWeight: '400',
-    lineHeight: 32,
-  },
-  backLinkWrap: {
-    alignSelf: 'flex-start',
-    marginBottom: spacing.lg,
-  },
-  content: {
-    alignItems: 'stretch',
-    flexGrow: 1,
-    gap: spacing.lg,
-    paddingBottom: spacing.xl,
-  },
-  mainContent: {
-    flex: 1,
-    gap: spacing.lg,
-    justifyContent: 'center',
-  },
-  heroRecorder: {
-    alignItems: 'center',
-    paddingVertical: spacing.xl,
-  },
-  recordButton: {
-    alignItems: 'center',
-    backgroundColor: '#F7E8DB',
-    borderRadius: 999,
-    height: 148,
-    justifyContent: 'center',
-    width: 148,
-  },
-  recordButtonActive: {
-    backgroundColor: '#F2CEC0',
-  },
-  recordButtonPressed: {
-    transform: [{ scale: 0.98 }],
-  },
-  recordButtonDisabled: {
-    opacity: 0.6,
-  },
-  recordButtonCore: {
-    backgroundColor: colors.text,
-    borderRadius: 999,
-    height: 78,
-    width: 78,
-  },
-  recordButtonCoreLive: {
-    backgroundColor: '#C9563B',
-  },
-  modalBackdrop: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(17, 11, 7, 0.45)',
-    flex: 1,
-    justifyContent: 'center',
-    padding: spacing.md,
-  },
-  modalCard: {
-    backgroundColor: colors.backgroundElevated,
-    borderRadius: radii.lg,
-    gap: spacing.md,
-    padding: spacing.lg,
-    width: '100%',
-  },
-  modalTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  modalBody: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  modalActions: {
-    gap: spacing.sm,
-  },
-});

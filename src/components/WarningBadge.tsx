@@ -1,6 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
-import { colors, radii, spacing } from '@/constants/theme';
 import type { WarningCode } from '@/domain/models';
 
 const warningCopy: Record<WarningCode, string> = {
@@ -14,25 +13,8 @@ const warningCopy: Record<WarningCode, string> = {
 
 export function WarningBadge({ warning }: { warning: WarningCode }) {
   return (
-    <View style={styles.badge}>
-      <Text style={styles.label}>{warningCopy[warning]}</Text>
+    <View className="self-start rounded-full border border-[#F2C88A] bg-[#FFF2DF] px-2.5 py-1.5">
+      <Text className="text-xs font-semibold text-[#B86A16]">{warningCopy[warning]}</Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  badge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#FFF2DF',
-    borderColor: '#F2C88A',
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-  },
-  label: {
-    color: colors.warning,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-});

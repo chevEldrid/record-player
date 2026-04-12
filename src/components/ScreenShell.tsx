@@ -1,10 +1,9 @@
 import { PropsWithChildren, useCallback, useRef } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 
 import { FloatingBottomNav, FLOATING_NAV_HEIGHT } from '@/components/FloatingBottomNav';
-import { colors, spacing } from '@/constants/theme';
 
 type Props = PropsWithChildren<{
   scroll?: boolean;
@@ -32,22 +31,20 @@ export function ScreenShell({
 
   const content = (
     <View
-      style={[
-        styles.content,
-        padded && styles.padded,
-        bottomNav && !extendBehindBottomNav && styles.bottomNavPadding,
-      ]}>
+      className={`flex-1 bg-appBg ${padded ? 'px-4 pt-4' : ''}`}
+      style={bottomNav && !extendBehindBottomNav ? { paddingBottom: FLOATING_NAV_HEIGHT + 20 } : undefined}>
       {children}
     </View>
   );
 
   return (
-    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
-      <View style={styles.frame}>
+    <SafeAreaView className="flex-1 bg-appBg" edges={['left', 'right', 'bottom']}>
+      <View className="flex-1 bg-appBg">
         {scroll ? (
           <ScrollView
             ref={scrollRef}
-            contentContainerStyle={styles.scrollContent}
+            className="flex-1 bg-appBg"
+            contentContainerStyle={{ backgroundColor: '#FFBD59', flexGrow: 1 }}
             keyboardShouldPersistTaps="handled">
             {content}
           </ScrollView>
@@ -59,26 +56,3 @@ export function ScreenShell({
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    backgroundColor: colors.background,
-    flex: 1,
-  },
-  frame: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-  },
-  bottomNavPadding: {
-    paddingBottom: FLOATING_NAV_HEIGHT + spacing.lg,
-  },
-  padded: {
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-});

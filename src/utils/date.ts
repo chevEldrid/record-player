@@ -93,10 +93,14 @@ export function toDateInputValue(value?: string) {
   return `${year}-${month}-${day}`;
 }
 
-export function sortByRecordedAtDesc<T extends { recordedAt?: string; createdAt: string }>(items: T[]) {
+export function todayDateInputValue() {
+  return toDateInputValue(new Date().toISOString());
+}
+
+export function sortByOccurredAtDesc<T extends { occurredAt?: string; recordedAt?: string; createdAt: string }>(items: T[]) {
   return [...items].sort((a, b) => {
-    const left = a.recordedAt ?? a.createdAt;
-    const right = b.recordedAt ?? b.createdAt;
+    const left = a.occurredAt ?? a.recordedAt ?? a.createdAt;
+    const right = b.occurredAt ?? b.recordedAt ?? b.createdAt;
     return new Date(right).getTime() - new Date(left).getTime();
   });
 }

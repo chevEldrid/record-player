@@ -1,6 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
-import { colors, radii, spacing } from '@/constants/theme';
 import type { Track } from '@/domain/models';
 import { formatDisplayDateOnly } from '@/utils/date';
 import { WarningBadge } from '@/components/WarningBadge';
@@ -13,15 +12,20 @@ export function TrackListItem({
   onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
-      <View style={styles.timelineColumn}>
-        <View style={styles.timelineDot} />
+    <Pressable
+      onPress={onPress}
+      className="flex-row items-start gap-4"
+      style={({ pressed }) => ({ opacity: pressed ? 0.92 : 1 })}>
+      <View className="w-4 self-stretch items-center">
+        <View className="mt-[18px] h-3.5 w-3.5 rounded-full bg-appAccent" />
       </View>
-      <View style={styles.card}>
-        <Text style={styles.title}>{track.title}</Text>
-        <Text style={styles.date}>{formatDisplayDateOnly(track.recordedAt)}</Text>
+      <View className="flex-1 gap-1.5 rounded-appLg border border-appBorder bg-appCard p-4">
+        <Text className="text-base font-bold text-appText">{track.title}</Text>
+        <Text className="text-[13px] text-appMuted">
+          {formatDisplayDateOnly(track.occurredAt)}
+        </Text>
         {track.warnings.length ? (
-          <View style={styles.warningRow}>
+          <View className="mt-1 flex-row flex-wrap gap-1.5">
             {track.warnings.slice(0, 2).map((warning) => (
               <WarningBadge key={warning} warning={warning} />
             ))}
@@ -31,50 +35,3 @@ export function TrackListItem({
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  row: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  pressed: {
-    opacity: 0.92,
-  },
-  timelineColumn: {
-    alignItems: 'center',
-    alignSelf: 'stretch',
-    width: 16,
-  },
-  timelineDot: {
-    backgroundColor: colors.accent,
-    borderRadius: radii.pill,
-    height: 14,
-    marginTop: 18,
-    width: 14,
-  },
-  card: {
-    backgroundColor: colors.card,
-    borderColor: colors.border,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    flex: 1,
-    gap: spacing.xs,
-    padding: spacing.md,
-  },
-  title: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  date: {
-    color: colors.textMuted,
-    fontSize: 13,
-  },
-  warningRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-    marginTop: spacing.xs,
-  },
-});

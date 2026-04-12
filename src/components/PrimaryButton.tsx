@@ -1,6 +1,6 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, Pressable, Text } from 'react-native';
 
-import { colors, radii, spacing } from '@/constants/theme';
+import { colors } from '@/constants/theme';
 
 type Props = {
   label: string;
@@ -19,62 +19,29 @@ export function PrimaryButton({
 }: Props) {
   const palette =
     variant === 'secondary'
-      ? styles.secondary
+      ? 'bg-appCardAlt'
       : variant === 'danger'
-        ? styles.danger
-        : styles.primary;
+        ? 'bg-appDanger'
+        : 'bg-appText';
 
   return (
     <Pressable
       accessibilityRole="button"
+      className={`min-h-[52px] items-center justify-center rounded-full px-5 ${palette}`}
       disabled={disabled || loading}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.base,
-        palette,
-        (disabled || loading) && styles.disabled,
-        pressed && !disabled && !loading ? styles.pressed : null,
-      ]}>
+      style={({ pressed }) => ({
+        opacity: disabled || loading ? 0.55 : 1,
+        transform: [{ scale: pressed && !disabled && !loading ? 0.985 : 1 }],
+      })}>
       {loading ? (
         <ActivityIndicator color={variant === 'secondary' ? colors.text : '#FFFFFF'} />
       ) : (
-        <Text style={[styles.label, variant === 'secondary' && styles.secondaryLabel]}>
+        <Text
+          className={`text-base font-bold ${variant === 'secondary' ? 'text-appText' : 'text-white'}`}>
           {label}
         </Text>
       )}
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  base: {
-    alignItems: 'center',
-    borderRadius: radii.pill,
-    justifyContent: 'center',
-    minHeight: 52,
-    paddingHorizontal: spacing.lg,
-  },
-  primary: {
-    backgroundColor: colors.text,
-  },
-  secondary: {
-    backgroundColor: colors.cardAlt,
-  },
-  danger: {
-    backgroundColor: colors.danger,
-  },
-  disabled: {
-    opacity: 0.55,
-  },
-  pressed: {
-    transform: [{ scale: 0.985 }],
-  },
-  label: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  secondaryLabel: {
-    color: colors.text,
-  },
-});

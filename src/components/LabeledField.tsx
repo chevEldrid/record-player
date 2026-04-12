@@ -1,6 +1,6 @@
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Text, TextInput, View } from 'react-native';
 
-import { colors, radii, spacing } from '@/constants/theme';
+import { colors } from '@/constants/theme';
 
 type Props = {
   label: string;
@@ -20,46 +20,21 @@ export function LabeledField({
   helper,
 }: Props) {
   return (
-    <View style={styles.wrapper}>
-      <Text style={styles.label}>{label}</Text>
+    <View className="gap-1.5">
+      <Text className="text-sm font-semibold text-appText">{label}</Text>
       <TextInput
+        className={[
+          'rounded-appMd border border-appBorder bg-appCard px-4 py-[14px] text-base text-appText',
+          multiline ? 'min-h-[120px]' : '',
+        ].join(' ')}
         multiline={multiline}
         onChangeText={onChangeText}
         placeholder={placeholder}
         placeholderTextColor={colors.textMuted}
-        style={[styles.input, multiline && styles.multiline]}
+        style={multiline ? { textAlignVertical: 'top' } : undefined}
         value={value}
       />
-      {helper ? <Text style={styles.helper}>{helper}</Text> : null}
+      {helper ? <Text className="text-xs text-appMuted">{helper}</Text> : null}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrapper: {
-    gap: spacing.xs,
-  },
-  label: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  input: {
-    backgroundColor: colors.card,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: 16,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 14,
-  },
-  multiline: {
-    minHeight: 120,
-    textAlignVertical: 'top',
-  },
-  helper: {
-    color: colors.textMuted,
-    fontSize: 12,
-  },
-});

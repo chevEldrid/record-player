@@ -2,21 +2,20 @@ import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { Link, Redirect, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Text, View } from 'react-native';
 
+import { AppCard } from '@/components/AppCard';
 import { LabeledField } from '@/components/LabeledField';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenShell } from '@/components/ScreenShell';
 import {
   APP_NAME,
-  DRIVE_ALBUMS_FOLDER_NAME,
   DRIVE_ROOT_NAME,
   getGoogleClientId,
   getGoogleCloudProjectNumber,
   getGooglePickerApiKey,
   GOOGLE_DISCOVERY,
 } from '@/constants/config';
-import { colors, radii, spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import type { LibraryConfig } from '@/domain/models';
 import { googleScopes } from '@/services/googleAuth';
@@ -36,28 +35,6 @@ function normalizeRootFolderName(value: string) {
   return value.trim() || DRIVE_ROOT_NAME;
 }
 
-function ModeCard({
-  active,
-  title,
-  body,
-  onPress,
-}: {
-  active: boolean;
-  title: string;
-  body: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={[styles.modeCard, active && styles.modeCardActive]}>
-      <Text style={styles.modeTitle}>{title}</Text>
-      <Text style={styles.modeBody}>{body}</Text>
-    </Pressable>
-  );
-}
-
 export default function IndexScreen() {
   const router = useRouter();
   const clientId = getGoogleClientId();
@@ -69,10 +46,8 @@ export default function IndexScreen() {
   const { finishSignIn, status, error } = useAuth();
   const [working, setWorking] = useState(false);
   const [authError, setAuthError] = useState<string>();
-  const [setupMode, setSetupMode] = useState<'create' | 'import'>('create');
   const [baseFolderName, setBaseFolderName] = useState(DRIVE_ROOT_NAME);
   const [pendingTokens, setPendingTokens] = useState<PendingTokens | null>(null);
-  const [pickedFolder, setPickedFolder] = useState<PickedFolder | null>(null);
   const [parentFolder, setParentFolder] = useState<PickedFolder | null>(null);
 
   const [, response, promptAsync] = AuthSession.useAuthRequest(
@@ -103,7 +78,6 @@ export default function IndexScreen() {
           ? Number(response.params.expires_in)
           : undefined,
       });
-      setPickedFolder(null);
       setParentFolder(null);
       setAuthError(undefined);
       return;
@@ -131,36 +105,6 @@ export default function IndexScreen() {
         signInError instanceof Error
           ? signInError.message
           : 'Google sign-in did not complete.'
-      );
-    } finally {
-      setWorking(false);
-    }
-  }
-
-  async function openPicker() {
-    if (!pendingTokens || !pickerApiKey || !pickerAppId) {
-      return;
-    }
-
-    setWorking(true);
-    setAuthError(undefined);
-    try {
-      const folder = await openGoogleFolderPicker({
-        accessToken: pendingTokens.accessToken,
-        apiKey: pickerApiKey,
-        appId: pickerAppId,
-      });
-
-      setPickedFolder(folder);
-
-      if (!folder) {
-        setAuthError(
-          'No folder was selected. You can reopen Google Picker or create a new library instead.'
-        );
-      }
-    } catch (pickerError) {
-      setAuthError(
-        pickerError instanceof Error ? pickerError.message : 'Failed to open Google Picker.'
       );
     } finally {
       setWorking(false);
@@ -203,24 +147,34 @@ export default function IndexScreen() {
 
   return (
     <ScreenShell padded scroll>
-      <View style={styles.hero}>
-        <View style={styles.discOuter}>
-          <View style={styles.discInner}>
-            <View style={styles.discCenter} />
-          </View>
+      <View className="items-center gap-2.5 pt-10">
+        <View
+          className="items-center justify-center"
+          style={{ height: 140, width: 140 }}>
+          <Image
+            source={require('../assets/pershie.png')}
+            resizeMode="contain"
+            style={{ height: 140, width: 140 }}
+          />
         </View>
-        <Text style={styles.title}>{APP_NAME}</Text>
-        <Text style={styles.body}>Your Digital Memory Collection</Text>
+        <Text className="text-[34px] font-extrabold text-appText">{APP_NAME}</Text>
+        <Text className="max-w-[420px] text-center text-base leading-6 text-appMuted">
+          Your Digital Memory Collection
+        </Text>
       </View>
 
       {!signedInForSetup ? (
-        <View style={styles.signInSection}>
+        <View className="mt-7 gap-4">
           {!clientId ? (
-            <Text style={styles.error}>
+            <Text className="text-center text-sm leading-[22px] text-[#C2563D]">
               Add the Google web client ID from `.env.example` before signing in.
             </Text>
           ) : null}
-          {error || authError ? <Text style={styles.error}>{error ?? authError}</Text> : null}
+          {error || authError ? (
+            <Text className="text-center text-sm leading-[22px] text-[#C2563D]">
+              {error ?? authError}
+            </Text>
+          ) : null}
           <PrimaryButton
             disabled={!clientId}
             label={working ? 'Signing in...' : 'Sign in with Google'}
@@ -240,278 +194,72 @@ export default function IndexScreen() {
           />
         </View>
       ) : (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Choose your Experience</Text>
-          <View style={styles.modeRow}>
-            <ModeCard
-              active={setupMode === 'create'}
-              title="Create new"
-              body="Creates a new library in your Google Drive"
-              onPress={() => {
-                setSetupMode('create');
-                setPickedFolder(null);
-                setAuthError(undefined);
-              }}
-            />
-            <ModeCard
-              active={setupMode === 'import'}
-              title="Open existing"
-              body="Select an existing Pershie library"
-              onPress={() => {
-                setSetupMode('import');
-                setAuthError(undefined);
-              }}
+        <AppCard className="mt-7 gap-2.5 p-5">
+          <Text className="text-lg font-bold text-appText">Select your Library</Text>
+          <LabeledField
+            label="Base folder name"
+            onChangeText={setBaseFolderName}
+            placeholder={DRIVE_ROOT_NAME}
+            value={baseFolderName}
+          />
+          <Text className="text-sm leading-[22px] text-appMuted">
+            If no existing library is found, we&apos;ll make a new one.
+          </Text>
+          {parentFolder ? (
+            <View className="gap-1.5 rounded-appMd border border-appAccent bg-appAccentSoft p-4">
+              <Text className="text-sm font-bold text-appText">{parentFolder.name}</Text>
+              <Text className="text-[13px] text-appMuted">
+                Pershie will look here for {normalizeRootFolderName(baseFolderName)} and create it
+                if needed.
+              </Text>
+            </View>
+          ) : null}
+          {!pickerApiKey || !pickerAppId ? (
+            <Text className="text-center text-sm leading-[22px] text-[#C2563D]">
+              Choosing a parent folder needs `EXPO_PUBLIC_GOOGLE_API_KEY` and
+              `EXPO_PUBLIC_GOOGLE_CLOUD_PROJECT_NUMBER`.
+            </Text>
+          ) : null}
+          <View className="mt-1.5 gap-2">
+            <PrimaryButton
+              disabled={!pickerApiKey || !pickerAppId}
+              label={parentFolder ? 'Choose a different parent folder' : 'Choose parent folder'}
+              onPress={chooseParentFolder}
+              variant="secondary"
             />
           </View>
+          <PrimaryButton
+            label="Go to Library"
+            loading={working}
+            onPress={() =>
+              finalizeSignIn({
+                parentFolderId: parentFolder?.id,
+                rootFolderName: normalizeRootFolderName(baseFolderName),
+              })
+            }
+          />
 
-          {setupMode === 'create' ? (
-            <>
-              <LabeledField
-                label="Base folder name"
-                onChangeText={setBaseFolderName}
-                placeholder={DRIVE_ROOT_NAME}
-                value={baseFolderName}
-              />
-              {parentFolder ? (
-                <View style={styles.libraryOption}>
-                  <Text style={styles.libraryOptionTitle}>{parentFolder.name}</Text>
-                  <Text style={styles.libraryOptionBody}>
-                    New library will be created here as {normalizeRootFolderName(baseFolderName)}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={styles.cardBody}>
-                  By default Pershie creates the library at the top level of Drive. You can
-                  also choose an existing parent folder first.
-                </Text>
-              )}
-              <View style={styles.actionStack}>
-                <PrimaryButton
-                  disabled={!pickerApiKey || !pickerAppId}
-                  label={parentFolder ? 'Choose a different parent folder' : 'Choose parent folder'}
-                  onPress={chooseParentFolder}
-                  variant="secondary"
-                />
-              </View>
-              <PrimaryButton
-                label="Create new library"
-                loading={working}
-                onPress={() =>
-                  finalizeSignIn({
-                    parentFolderId: parentFolder?.id,
-                    rootFolderName: normalizeRootFolderName(baseFolderName),
-                  })
-                }
-              />
-            </>
-          ) : (
-            <>
-              {!pickerApiKey || !pickerAppId ? (
-                <Text style={styles.error}>
-                  Import mode needs `EXPO_PUBLIC_GOOGLE_API_KEY` and
-                  `EXPO_PUBLIC_GOOGLE_CLOUD_PROJECT_NUMBER`.
-                </Text>
-              ) : null}
-              {pickedFolder ? (
-                <View style={styles.libraryOption}>
-                  <Text style={styles.libraryOptionTitle}>{pickedFolder.name}</Text>
-                  <Text style={styles.libraryOptionBody}>
-                    {pickedFolder.name}/{DRIVE_ALBUMS_FOLDER_NAME}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={styles.cardBody}>
-                  Choose the existing base folder you want Pershie to reconnect to.
-                </Text>
-              )}
-              <View style={styles.actionStack}>
-                <PrimaryButton
-                  disabled={!pickerApiKey || !pickerAppId}
-                  label={pickedFolder ? 'Use selected folder' : 'Open Google Picker'}
-                  loading={working}
-                  onPress={() => {
-                    if (pickedFolder) {
-                      finalizeSignIn({
-                        rootFolderId: pickedFolder.id,
-                        rootFolderName: pickedFolder.name,
-                        parentFolderId: undefined,
-                      });
-                      return;
-                    }
-
-                    openPicker();
-                  }}
-                />
-                <PrimaryButton
-                  label={pickedFolder ? 'Choose a different folder' : 'Create a new library instead'}
-                  onPress={() => {
-                    if (pickedFolder) {
-                      openPicker();
-                      return;
-                    }
-
-                    setSetupMode('create');
-                    setAuthError(undefined);
-                  }}
-                  variant="secondary"
-                />
-              </View>
-            </>
-          )}
-
-          {error || authError ? <Text style={styles.error}>{error ?? authError}</Text> : null}
-        </View>
+          {error || authError ? (
+            <Text className="text-center text-sm leading-[22px] text-[#C2563D]">
+              {error ?? authError}
+            </Text>
+          ) : null}
+        </AppCard>
       )}
 
-      <View style={styles.legalLinks}>
-        <Link href="/about" style={styles.legalLink}>
+      <View className="mb-7 mt-7 flex-row flex-wrap items-center justify-center gap-1.5">
+        <Link className="text-[13px] font-semibold text-appAccent" href="/about">
           About
         </Link>
-        <Text style={styles.legalDivider}>•</Text>
-        <Link href="/privacy-policy" style={styles.legalLink}>
+        <Text className="text-[13px] text-appMuted">•</Text>
+        <Link className="text-[13px] font-semibold text-appAccent" href="/privacy-policy">
           Privacy Policy
         </Link>
-        <Text style={styles.legalDivider}>•</Text>
-        <Link href="/terms-of-service" style={styles.legalLink}>
+        <Text className="text-[13px] text-appMuted">•</Text>
+        <Link className="text-[13px] font-semibold text-appAccent" href="/terms-of-service">
           Terms of Service
         </Link>
       </View>
     </ScreenShell>
   );
 }
-
-const styles = StyleSheet.create({
-  hero: {
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingTop: spacing.xxl,
-  },
-  discOuter: {
-    alignItems: 'center',
-    backgroundColor: '#2B1F17',
-    borderRadius: 999,
-    height: 180,
-    justifyContent: 'center',
-    width: 180,
-  },
-  discInner: {
-    alignItems: 'center',
-    borderColor: '#4E3B2C',
-    borderRadius: 999,
-    borderWidth: 1,
-    height: 124,
-    justifyContent: 'center',
-    width: 124,
-  },
-  discCenter: {
-    backgroundColor: colors.accent,
-    borderRadius: 999,
-    height: 36,
-    width: 36,
-  },
-  title: {
-    color: colors.text,
-    fontSize: 34,
-    fontWeight: '800',
-  },
-  body: {
-    color: colors.textMuted,
-    fontSize: 16,
-    lineHeight: 24,
-    maxWidth: 420,
-    textAlign: 'center',
-  },
-  signInSection: {
-    gap: spacing.md,
-    marginTop: spacing.xl,
-  },
-  error: {
-    color: '#C2563D',
-    fontSize: 14,
-    lineHeight: 22,
-    textAlign: 'center',
-  },
-  card: {
-    backgroundColor: colors.card,
-    borderColor: colors.border,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    gap: spacing.sm,
-    marginTop: spacing.xl,
-    padding: spacing.lg,
-  },
-  cardTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  cardBody: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 22,
-  },
-  modeRow: {
-    gap: spacing.sm,
-  },
-  modeCard: {
-    backgroundColor: colors.backgroundElevated,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    gap: spacing.xs,
-    padding: spacing.md,
-  },
-  modeCardActive: {
-    backgroundColor: colors.accentSoft,
-    borderColor: colors.accent,
-  },
-  modeTitle: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  modeBody: {
-    color: colors.textMuted,
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  libraryOption: {
-    backgroundColor: colors.accentSoft,
-    borderColor: colors.accent,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    gap: spacing.xs,
-    padding: spacing.md,
-  },
-  libraryOptionTitle: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  libraryOptionBody: {
-    color: colors.textMuted,
-    fontSize: 13,
-  },
-  actionStack: {
-    gap: spacing.sm,
-    marginTop: spacing.xs,
-  },
-  legalLinks: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-    justifyContent: 'center',
-    marginBottom: spacing.xl,
-    marginTop: spacing.xl,
-  },
-  legalLink: {
-    color: colors.accent,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  legalDivider: {
-    color: colors.textMuted,
-    fontSize: 13,
-  },
-});
