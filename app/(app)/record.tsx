@@ -1,16 +1,8 @@
-import * as DocumentPicker from 'expo-document-picker';
 import { Audio } from 'expo-av';
+import { Trash2 } from 'lucide-react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Alert,
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { EmptyState } from '@/components/EmptyState';
 import { LabeledField } from '@/components/LabeledField';
@@ -18,20 +10,57 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenShell } from '@/components/ScreenShell';
 import { colors, radii, spacing } from '@/constants/theme';
 import { useAppData } from '@/contexts/AppDataContext';
-import { formatDisplayDate } from '@/utils/date';
+import {
+  formatDisplayDate,
+  formatTimestampFileLabel,
+  toLocalTimestampMinute,
+} from '@/utils/date';
+import { slugify } from '@/utils/slug';
+
+function parseTags(value: string) {
+  return value
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
+function extensionForMimeType(mimeType: string) {
+  if (mimeType.includes('mpeg')) {
+    return 'mp3';
+  }
+
+  if (mimeType.includes('webm')) {
+    return 'webm';
+  }
+
+  return 'm4a';
+}
 
 export default function RecordScreen() {
   const params = useLocalSearchParams<{ albumId?: string }>();
   const { albums, pendingUploads, saveTrack } = useAppData();
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | undefined>(params.albumId);
   const [title, setTitle] = useState('');
+  const [tagsText, setTagsText] = useState('');
+  const [notes, setNotes] = useState('');
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [recordedUri, setRecordedUri] = useState<string>();
   const [recordedAt, setRecordedAt] = useState<string>();
-  const [recordedMimeType, setRecordedMimeType] = useState('audio/m4a');
+  const [recordedMimeType, setRecordedMimeType] = useState('audio/webm');
   const [saving, setSaving] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [selectorOpen, setSelectorOpen] = useState(false);
+  const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
+
+  function clearRecording() {
+    setRecordedUri(undefined);
+    setRecordedAt(undefined);
+    setTitle('');
+    setTagsText('');
+    setNotes('');
+    setAudioLevel(0);
+  }
 
   useEffect(() => {
     if (!selectedAlbumId && albums[0]) {
@@ -77,8 +106,7 @@ export default function RecordScreen() {
       isMeteringEnabled: true,
     });
     await nextRecording.startAsync();
-    setRecordedUri(undefined);
-    setRecordedAt(undefined);
+    clearRecording();
     setRecording(nextRecording);
   }
 
@@ -92,15 +120,15 @@ export default function RecordScreen() {
     setRecording(null);
     setAudioLevel(0);
     setRecordedUri(uri ?? undefined);
-    setRecordedAt(new Date().toISOString());
-    setRecordedMimeType(Platform.OS === 'web' ? 'audio/webm' : 'audio/m4a');
+    setRecordedAt(toLocalTimestampMinute());
+    setRecordedMimeType('audio/webm');
     await Audio.setAudioModeAsync({
       allowsRecordingIOS: false,
       playsInSilentModeIOS: true,
     });
   }
 
-  async function saveCurrentRecording(uri: string, mimeType: string) {
+  async function saveCurrentRecording() {
     if (!selectedAlbumId) {
       Alert.alert('Select an album', 'Choose where this recording should live first.');
       return;
@@ -108,20 +136,16 @@ export default function RecordScreen() {
 
     setSaving(true);
     try {
-      const timestamp = recordedAt ?? new Date().toISOString();
       await saveTrack({
         albumId: selectedAlbumId,
-        title: title.trim() || `Recording ${formatDisplayDate(timestamp)}`,
-        recordedAt: timestamp,
-        tags: [],
-        notes: '',
-        transcript: '',
-        audioUri: uri,
-        mimeType,
+        title: title.trim() || formatTimestampFileLabel(recordedAt!),
+        recordedAt: recordedAt!,
+        tags: parseTags(tagsText),
+        notes,
+        audioUri: recordedUri!,
+        mimeType: recordedMimeType,
       });
-      setTitle('');
-      setRecordedUri(undefined);
-      setRecordedAt(undefined);
+      clearRecording();
       Alert.alert('Saved', 'The track was saved.');
     } catch (error) {
       Alert.alert(
@@ -133,86 +157,155 @@ export default function RecordScreen() {
     }
   }
 
-  async function pickAudioFile() {
-    const result = await DocumentPicker.getDocumentAsync({
-      type: ['audio/*'],
-      copyToCacheDirectory: true,
-    });
-
-    if (result.canceled || !result.assets[0]) {
-      return;
-    }
-
-    const asset = result.assets[0];
-    setRecordedUri(asset.uri);
-    setRecordedAt(new Date().toISOString());
-    setRecordedMimeType(asset.mimeType ?? 'audio/mpeg');
-    setTitle(asset.name.replace(/\.[^.]+$/, ''));
+  function downloadBlob(blob: Blob, fileName: string) {
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
   }
 
+  async function downloadCurrentRecording() {
+    setDownloading(true);
+    try {
+      const response = await fetch(recordedUri!);
+      if (!response.ok) {
+        throw new Error('Could not read the recorded audio.');
+      }
+
+      const audioBlob = await response.blob();
+      const baseName = slugify(title.trim()) || formatTimestampFileLabel(recordedAt!);
+      const extension = extensionForMimeType(recordedMimeType);
+
+      downloadBlob(audioBlob, `${baseName}.${extension}`);
+
+      const metadata = {
+        title: title.trim() || formatTimestampFileLabel(recordedAt!),
+        recordedAt: recordedAt!,
+        tags: parseTags(tagsText),
+        notes,
+        mimeType: recordedMimeType,
+      };
+      const metadataBlob = new Blob([JSON.stringify(metadata, null, 2)], {
+        type: 'application/json',
+      });
+      downloadBlob(metadataBlob, `${baseName}.json`);
+      Alert.alert('Downloaded', 'The recording and its metadata were downloaded to this device.');
+    } catch (error) {
+      Alert.alert(
+        'Could not download',
+        error instanceof Error ? error.message : 'Downloading the recording failed.'
+      );
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  const extension = extensionForMimeType(recordedMimeType);
+  const displayName = slugify(title.trim()) || formatTimestampFileLabel(recordedAt);
+
   return (
-    <ScreenShell bottomNav scroll>
+    <ScreenShell bottomNav>
       {albums.length ? (
         <>
-          <View style={styles.header}>
-            <Pressable onPress={() => setSelectorOpen(true)} style={styles.albumPicker}>
-              <Text style={styles.albumPickerLabel}>Save to</Text>
-              <Text numberOfLines={1} style={styles.albumPickerValue}>
-                {selectedAlbum?.name ?? 'Choose album'}
-              </Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.hero}>
-            <Pressable
-              onPress={recording ? stopRecording : startRecording}
-              style={({ pressed }) => [
-                styles.recordButton,
-                recording && styles.recordButtonActive,
-                pressed && styles.recordButtonPressed,
-              ]}>
-              <View
-                style={[
-                  styles.recordButtonCore,
-                  recording && styles.recordButtonCoreLive,
-                  recording && {
-                    transform: [{ scale: 1 + audioLevel * 0.18 }],
-                    opacity: 0.75 + audioLevel * 0.25,
-                  },
-                ]}
-              />
-            </Pressable>
-            <Text style={styles.recordCaption}>
-              {recording ? 'Tap to stop' : recordedUri ? 'Ready to save' : 'Tap to record'}
-            </Text>
-          </View>
-
-          <View style={styles.actions}>
-            <PrimaryButton label="Upload Audio" onPress={pickAudioFile} variant="secondary" />
-          </View>
-
-          {recordedUri ? (
-            <View style={styles.saveCard}>
-              <LabeledField
-                label="Track title"
-                onChangeText={setTitle}
-                placeholder="Optional. Defaults to recording date."
-                value={title}
-              />
-              <Text style={styles.saveMeta}>{formatDisplayDate(recordedAt)}</Text>
-              <PrimaryButton
-                label="Save Recording"
-                loading={saving}
-                onPress={() => saveCurrentRecording(recordedUri, recordedMimeType)}
-              />
+          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+            <View style={styles.heroRecorder}>
+              <Pressable
+                disabled={Boolean(recordedUri) && !recording}
+                onPress={recording ? stopRecording : startRecording}
+                style={({ pressed }) => [
+                  styles.recordButton,
+                  recording && styles.recordButtonActive,
+                  recordedUri && !recording && styles.recordButtonDisabled,
+                  pressed && styles.recordButtonPressed,
+                ]}>
+                <View
+                  style={[
+                    styles.recordButtonCore,
+                    recording && styles.recordButtonCoreLive,
+                    recording && {
+                      transform: [{ scale: 1 + audioLevel * 0.18 }],
+                      opacity: 0.75 + audioLevel * 0.25,
+                    },
+                  ]}
+                />
+              </Pressable>
             </View>
-          ) : null}
 
-          {pendingUploads.length ? (
-            <Text style={styles.pendingNote}>
-              {pendingUploads.length} upload{pendingUploads.length === 1 ? '' : 's'} pending.
-            </Text>
-          ) : null}
+            {recordedUri && recordedAt ? (
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>Recorded File</Text>
+                <View style={styles.fileRow}>
+                  <View style={styles.fileGlyph}>
+                    <View style={styles.fileGlyphFold} />
+                  </View>
+                  <View style={styles.fileMeta}>
+                    <Text numberOfLines={1} style={styles.fileMetaName}>
+                      {displayName}.{extension}
+                    </Text>
+                    <Text style={styles.fileMetaStamp}>{formatDisplayDate(recordedAt)}</Text>
+                  </View>
+                  <Pressable
+                    accessibilityLabel="Discard recording"
+                    accessibilityRole="button"
+                    onPress={() => setConfirmDiscardOpen(true)}
+                    style={({ pressed }) => [
+                      styles.trashButton,
+                      pressed && styles.trashButtonPressed,
+                    ]}>
+                    <Trash2 color={colors.textMuted} size={16} strokeWidth={2} />
+                  </Pressable>
+                </View>
+                <Pressable onPress={() => setSelectorOpen(true)} style={styles.albumPicker}>
+                  <Text style={styles.albumPickerLabel}>Save to</Text>
+                  <Text numberOfLines={1} style={styles.albumPickerValue}>
+                    {selectedAlbum?.name ?? 'Choose album'}
+                  </Text>
+                </Pressable>
+                <LabeledField
+                  label="Track title"
+                  onChangeText={setTitle}
+                  placeholder={formatTimestampFileLabel(recordedAt)}
+                  value={title}
+                />
+                <LabeledField
+                  label="Tags"
+                  onChangeText={setTagsText}
+                  placeholder="family, travel, childhood"
+                  value={tagsText}
+                />
+                <LabeledField
+                  label="Notes"
+                  multiline
+                  onChangeText={setNotes}
+                  placeholder="Context, prompts, or details to remember."
+                  value={notes}
+                />
+                <View style={styles.actionGroup}>
+                  <PrimaryButton
+                    label="Save to Album"
+                    loading={saving}
+                    onPress={saveCurrentRecording}
+                  />
+                  <PrimaryButton
+                    label="Download"
+                    loading={downloading}
+                    onPress={downloadCurrentRecording}
+                    variant="secondary"
+                  />
+                </View>
+              </View>
+            ) : null}
+
+            {pendingUploads.length ? (
+              <Text style={styles.pendingNote}>
+                {pendingUploads.length} upload{pendingUploads.length === 1 ? '' : 's'} pending.
+              </Text>
+            ) : null}
+          </ScrollView>
         </>
       ) : (
         <EmptyState
@@ -244,15 +337,36 @@ export default function RecordScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal animationType="fade" transparent visible={confirmDiscardOpen}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Discard recording?</Text>
+            <Text style={styles.modalBody}>
+              Are you sure you want to discard this recording?
+            </Text>
+            <View style={styles.modalActions}>
+              <PrimaryButton
+                label="Keep"
+                onPress={() => setConfirmDiscardOpen(false)}
+                variant="secondary"
+              />
+              <PrimaryButton
+                label="Discard"
+                onPress={() => {
+                  clearRecording();
+                  setConfirmDiscardOpen(false);
+                }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    marginTop: spacing.md,
-    paddingHorizontal: spacing.md,
-  },
   albumPicker: {
     backgroundColor: colors.card,
     borderColor: colors.border,
@@ -271,11 +385,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 4,
   },
-  hero: {
-    alignItems: 'center',
+  content: {
+    alignItems: 'stretch',
+    flexGrow: 1,
+    gap: spacing.lg,
     justifyContent: 'center',
+    paddingBottom: spacing.xl,
+  },
+  heroRecorder: {
+    alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.xxl,
+    paddingVertical: spacing.xl,
   },
   recordButton: {
     alignItems: 'center',
@@ -291,6 +411,9 @@ const styles = StyleSheet.create({
   recordButtonPressed: {
     transform: [{ scale: 0.98 }],
   },
+  recordButtonDisabled: {
+    opacity: 0.6,
+  },
   recordButtonCore: {
     backgroundColor: '#D3372F',
     borderRadius: 999,
@@ -300,29 +423,72 @@ const styles = StyleSheet.create({
   recordButtonCoreLive: {
     borderRadius: 28,
   },
-  recordCaption: {
-    color: colors.text,
-    fontSize: 22,
-    fontWeight: '800',
-    marginTop: spacing.lg,
-  },
-  actions: {
-    marginTop: spacing.xl,
-    paddingHorizontal: spacing.md,
-  },
-  saveCard: {
+  card: {
     backgroundColor: colors.card,
     borderColor: colors.border,
     borderRadius: radii.lg,
     borderWidth: 1,
     gap: spacing.md,
     marginHorizontal: spacing.md,
-    marginTop: spacing.lg,
     padding: spacing.lg,
   },
-  saveMeta: {
+  cardTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  fileRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  fileGlyph: {
+    backgroundColor: colors.cardAlt,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    height: 58,
+    overflow: 'hidden',
+    position: 'relative',
+    width: 48,
+  },
+  fileGlyphFold: {
+    backgroundColor: colors.background,
+    height: 14,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    transform: [{ rotate: '45deg' }, { translateX: 7 }, { translateY: -7 }],
+    width: 14,
+  },
+  fileMeta: {
+    flex: 1,
+    gap: 4,
+  },
+  fileMetaName: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  fileMetaStamp: {
     color: colors.textMuted,
     fontSize: 13,
+  },
+  trashButton: {
+    alignItems: 'center',
+    borderColor: colors.border,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 36,
+    minWidth: 52,
+    paddingHorizontal: spacing.sm,
+  },
+  trashButtonPressed: {
+    opacity: 0.7,
+  },
+  actionGroup: {
+    gap: spacing.sm,
   },
   pendingNote: {
     color: colors.accent,
@@ -348,6 +514,14 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 18,
     fontWeight: '800',
+  },
+  modalBody: {
+    color: colors.textMuted,
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  modalActions: {
+    gap: spacing.sm,
   },
   modalOption: {
     backgroundColor: colors.card,

@@ -23,7 +23,6 @@ export default function TrackDetailsModal() {
   const [recordedAt, setRecordedAt] = useState(toDateInputValue(track?.recordedAt));
   const [tagsText, setTagsText] = useState(track?.tags.join(', ') ?? '');
   const [notes, setNotes] = useState(track?.notes ?? '');
-  const [transcript, setTranscript] = useState(track?.transcript ?? '');
   const [imageUri, setImageUri] = useState<string | undefined>(track?.imageUri);
   const [saving, setSaving] = useState(false);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
@@ -109,7 +108,6 @@ export default function TrackDetailsModal() {
           .map((item) => item.trim())
           .filter(Boolean),
         notes,
-        transcript,
         imageUri:
           imageUri && !imageUri.startsWith('drive://') ? imageUri : undefined,
       });
@@ -154,19 +152,12 @@ export default function TrackDetailsModal() {
         value={recordedAt}
       />
       <LabeledField
-        helper="Comma-separated tags"
         label="Tags"
         onChangeText={setTagsText}
         placeholder="childhood, migration, music"
         value={tagsText}
       />
       <LabeledField label="Notes" multiline onChangeText={setNotes} value={notes} />
-      <LabeledField
-        label="Transcript"
-        multiline
-        onChangeText={setTranscript}
-        value={transcript}
-      />
 
       <View style={styles.saveSpacer} />
       <PrimaryButton label="Save" loading={saving} onPress={saveChanges} />

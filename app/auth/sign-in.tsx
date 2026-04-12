@@ -1,6 +1,6 @@
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
-import { Link, Redirect } from 'expo-router';
+import { Link, Redirect, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -59,6 +59,7 @@ function ModeCard({
 }
 
 export default function SignInScreen() {
+  const router = useRouter();
   const clientId = getGoogleClientId();
   const pickerApiKey = getGooglePickerApiKey();
   const pickerAppId = getGoogleCloudProjectNumber();
@@ -234,6 +235,11 @@ export default function SignInScreen() {
                 setWorking(false);
               });
             }}
+          />
+          <PrimaryButton
+            label="Open Recorder"
+            onPress={() => router.push('/offline-record')}
+            variant="secondary"
           />
         </View>
       ) : (
@@ -518,6 +524,13 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   signInSection: {
+    gap: spacing.md,
     marginTop: spacing.xl,
+  },
+  offlineHelper: {
+    color: colors.textMuted,
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: 'center',
   },
 });

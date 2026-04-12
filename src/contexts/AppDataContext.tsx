@@ -26,7 +26,6 @@ type SaveTrackInput = {
   recordedAt: string;
   tags: string[];
   notes: string;
-  transcript: string;
   imageUri?: string;
   audioUri?: string;
   mimeType?: string;
@@ -66,7 +65,6 @@ function mergePendingUploads(albums: Album[], pendingUploads: PendingUpload[]) {
         updatedAt: item.createdAt,
         tags: item.tags,
         notes: item.notes,
-        transcript: item.transcript,
         imageUri: item.imageUri,
         audioUri: item.localAudioUri,
         warnings: ['pending-upload'],
@@ -106,10 +104,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   const rehydrateLocalState = useCallback(async () => {
     await ensureLocalStore();
-    const [snapshot, queue] = await Promise.all([
-      readLibrarySnapshot(),
-      readPendingUploads(),
-    ]);
+    const [snapshot, queue] = await Promise.all([readLibrarySnapshot(), readPendingUploads()]);
 
     if (snapshot?.albums) {
       setRemoteAlbums(snapshot.albums);
@@ -264,7 +259,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           recordedAt: input.recordedAt,
           tags: input.tags,
           notes: input.notes,
-          transcript: input.transcript,
           imageUri: input.imageUri,
           audioUri: input.audioUri,
           mimeType: input.mimeType,
@@ -312,7 +306,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         recordedAt: changes.recordedAt,
         tags: changes.tags,
         notes: changes.notes,
-        transcript: changes.transcript,
         imageUri: changes.imageUri,
       });
       await refreshLibrary(true);

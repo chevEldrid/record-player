@@ -19,11 +19,12 @@ export default function RootLayout() {
           }}>
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="auth/sign-in" options={{ headerShown: false }} />
+          <Stack.Screen name="offline-record" options={{ title: 'Recorder' }} />
           <Stack.Screen name="about" options={{ headerShown: false }} />
           <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
           <Stack.Screen name="terms-of-service" options={{ headerShown: false }} />
           <Stack.Screen name="(app)" options={{ headerShown: false }} />
-          <Stack.Screen name="albums/[albumId]" options={{ title: 'Tracks' }} />
+          <Stack.Screen name="albums/[albumId]" options={{ headerShown: false }} />
           <Stack.Screen
             name="modals/create-album"
             options={{ presentation: 'modal', title: 'New Album' }}
