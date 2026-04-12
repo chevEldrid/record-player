@@ -2,7 +2,7 @@ import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { Link, Redirect, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Image, Text, View } from 'react-native';
 
 import { AppCard } from '@/components/AppCard';
 import { LabeledField } from '@/components/LabeledField';
@@ -148,10 +148,14 @@ export default function IndexScreen() {
   return (
     <ScreenShell padded scroll>
       <View className="items-center gap-2.5 pt-10">
-        <View className="h-[180px] w-[180px] items-center justify-center rounded-full bg-[#2B1F17]">
-          <View className="h-[124px] w-[124px] items-center justify-center rounded-full border border-[#4E3B2C]">
-            <View className="h-9 w-9 rounded-full bg-appAccent" />
-          </View>
+        <View
+          className="items-center justify-center"
+          style={{ height: 140, width: 140 }}>
+          <Image
+            source={require('../assets/pershie.png')}
+            resizeMode="contain"
+            style={{ height: 140, width: 140 }}
+          />
         </View>
         <Text className="text-[34px] font-extrabold text-appText">{APP_NAME}</Text>
         <Text className="max-w-[420px] text-center text-base leading-6 text-appMuted">
