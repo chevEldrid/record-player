@@ -4,25 +4,27 @@ import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 
+import { DateField } from '@/components/DateField';
 import { DriveImage } from '@/components/DriveImage';
 import { LabeledField } from '@/components/LabeledField';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenShell } from '@/components/ScreenShell';
 import { WarningBadge } from '@/components/WarningBadge';
 import { useAppData } from '@/contexts/AppDataContext';
-import { formatDisplayDateOnly, toDateInputValue } from '@/utils/date';
+import { formatDisplayDate, formatDisplayDateOnly, toDateInputValue } from '@/utils/date';
 
-export default function TrackDetailsModal() {
+export default function TrackDetailsScreen() {
   const { albumId, trackId } = useLocalSearchParams<{ albumId: string; trackId: string }>();
   const { albums, downloadDriveAsset, updateTrack } = useAppData();
   const album = albums.find((candidate) => candidate.id === albumId);
   const track = album?.tracks.find((candidate) => candidate.id === trackId);
 
   const [title, setTitle] = useState(track?.title ?? '');
-  const [recordedAt, setRecordedAt] = useState(toDateInputValue(track?.recordedAt));
+  const [occurredAt, setOccurredAt] = useState(toDateInputValue(track?.occurredAt));
   const [tagsText, setTagsText] = useState(track?.tags.join(', ') ?? '');
   const [notes, setNotes] = useState(track?.notes ?? '');
   const [imageUri, setImageUri] = useState<string | undefined>(track?.imageUri);
+  const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -37,9 +39,22 @@ export default function TrackDetailsModal() {
     };
   }, [sound]);
 
+  useEffect(() => {
+    if (!track) {
+      return;
+    }
+
+    setTitle(track.title);
+    setOccurredAt(toDateInputValue(track.occurredAt));
+    setTagsText(track.tags.join(', '));
+    setNotes(track.notes ?? '');
+    setImageUri(track.imageUri);
+    setIsEditing(false);
+  }, [track]);
+
   if (!album || !track) {
     return (
-      <ScreenShell>
+      <ScreenShell bottomNav>
         <Text className="text-[26px] font-extrabold text-appText">Track unavailable</Text>
         <Text className="mb-5 mt-1.5 text-[15px] text-appMuted">
           This track could not be loaded.
@@ -50,6 +65,14 @@ export default function TrackDetailsModal() {
 
   const currentAlbum = album;
   const currentTrack = track;
+
+  function resetForm() {
+    setTitle(currentTrack.title);
+    setOccurredAt(toDateInputValue(currentTrack.occurredAt));
+    setTagsText(currentTrack.tags.join(', '));
+    setNotes(currentTrack.notes ?? '');
+    setImageUri(currentTrack.imageUri);
+  }
 
   async function chooseImage() {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -103,7 +126,8 @@ export default function TrackDetailsModal() {
     try {
       await updateTrack(currentAlbum.id, currentTrack.id, {
         title,
-        recordedAt: recordedAt || toDateInputValue(currentTrack.recordedAt),
+        recordedAt: currentTrack.recordedAt || new Date().toISOString(),
+        occurredAt: occurredAt || toDateInputValue(currentTrack.occurredAt),
         tags: tagsText
           .split(',')
           .map((item) => item.trim())
@@ -112,6 +136,7 @@ export default function TrackDetailsModal() {
         imageUri:
           imageUri && !imageUri.startsWith('drive://') ? imageUri : undefined,
       });
+      setIsEditing(false);
       Alert.alert('Saved', 'Track updated.');
     } catch (error) {
       Alert.alert(
@@ -124,18 +149,23 @@ export default function TrackDetailsModal() {
   }
 
   return (
-    <ScreenShell scroll>
+    <ScreenShell bottomNav scroll>
       <Text className="text-[26px] font-extrabold text-appText">{track.title}</Text>
       <Text className="mb-5 mt-1.5 text-[15px] text-appMuted">
-        {formatDisplayDateOnly(currentTrack.recordedAt)}
+        Occurred {formatDisplayDateOnly(currentTrack.occurredAt)}
+      </Text>
+      <Text className="-mt-3 mb-5 text-[13px] text-appMuted">
+        Recorded {formatDisplayDate(currentTrack.recordedAt)}
       </Text>
 
       <Pressable className="relative mb-5 self-center" onPress={togglePlayback}>
         <DriveImage label={currentTrack.title} size={180} uri={imageUri} />
-        <View className="absolute h-[62px] w-[62px] items-center justify-center rounded-full bg-[rgba(33,26,20,0.24)]">
-          <Text className="ml-1 text-2xl font-bold text-white">
-            {isPlaying ? 'II' : '▶'}
-          </Text>
+        <View className="absolute inset-0 items-center justify-center">
+          <View className="h-[62px] w-[62px] items-center justify-center rounded-full bg-[rgba(33,26,20,0.24)]">
+            <Text className="ml-1 text-2xl font-bold text-white">
+              {isPlaying ? 'II' : '▶'}
+            </Text>
+          </View>
         </View>
       </Pressable>
 
@@ -147,25 +177,44 @@ export default function TrackDetailsModal() {
         </View>
       ) : null}
 
-      <PrimaryButton label="Change Image" onPress={chooseImage} variant="secondary" />
-
-      <LabeledField label="Title" onChangeText={setTitle} value={title} />
-      <LabeledField
-        label="Date"
-        onChangeText={setRecordedAt}
-        placeholder="2026-04-08"
-        value={recordedAt}
-      />
-      <LabeledField
-        label="Tags"
-        onChangeText={setTagsText}
-        placeholder="childhood, migration, music"
-        value={tagsText}
-      />
-      <LabeledField label="Notes" multiline onChangeText={setNotes} value={notes} />
-
-      <View className="h-5" />
-      <PrimaryButton label="Save" loading={saving} onPress={saveChanges} />
+      {isEditing ? (
+        <View className="gap-4">
+          <PrimaryButton label="Change Image" onPress={chooseImage} variant="secondary" />
+          <LabeledField label="Title" onChangeText={setTitle} value={title} />
+          <DateField
+            helper="Used for album timeline ordering."
+            label="Occurred at"
+            onChangeText={setOccurredAt}
+            value={occurredAt}
+          />
+          <LabeledField
+            label="Tags"
+            onChangeText={setTagsText}
+            placeholder="childhood, migration, music"
+            value={tagsText}
+          />
+          <LabeledField label="Notes" multiline onChangeText={setNotes} value={notes} />
+          <View className="h-1" />
+          <PrimaryButton label="Save" loading={saving} onPress={saveChanges} />
+          <PrimaryButton
+            label="Cancel"
+            onPress={() => {
+              resetForm();
+              setIsEditing(false);
+            }}
+            variant="secondary"
+          />
+        </View>
+      ) : (
+        <PrimaryButton
+          label="Edit Metadata"
+          onPress={() => {
+            resetForm();
+            setIsEditing(true);
+          }}
+          variant="secondary"
+        />
+      )}
     </ScreenShell>
   );
 }

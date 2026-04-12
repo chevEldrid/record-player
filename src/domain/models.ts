@@ -49,6 +49,7 @@ export type TrackMetadata = {
   albumId: string;
   title: string;
   recordedAt: string;
+  occurredAt: string;
   createdAt: string;
   updatedAt: string;
   tags: string[];
@@ -79,6 +80,7 @@ export type Track = {
   albumId: string;
   title: string;
   recordedAt?: string;
+  occurredAt: string;
   createdAt: string;
   updatedAt: string;
   tags: string[];
@@ -108,6 +110,7 @@ export type PendingUpload = {
   mimeType: string;
   createdAt: string;
   recordedAt: string;
+  occurredAt: string;
   title: string;
   tags: string[];
   notes: string;

@@ -4,6 +4,7 @@ import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { AppCard } from '@/components/AppCard';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { DateField } from '@/components/DateField';
 import { EmptyState } from '@/components/EmptyState';
 import { LabeledField } from '@/components/LabeledField';
 import { PrimaryButton } from '@/components/PrimaryButton';
@@ -13,7 +14,7 @@ import { ScreenShell } from '@/components/ScreenShell';
 import { useAppData } from '@/contexts/AppDataContext';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useRecorder } from '@/hooks/useRecorder';
-import { formatDisplayDate, formatTimestampFileLabel } from '@/utils/date';
+import { formatDisplayDate, formatTimestampFileLabel, todayDateInputValue } from '@/utils/date';
 import { downloadBlob, extensionForMimeType } from '@/utils/recording';
 import { slugify } from '@/utils/slug';
 
@@ -30,6 +31,7 @@ export default function RecordScreen() {
   const { isOnline } = useNetworkStatus();
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | undefined>(params.albumId);
   const [title, setTitle] = useState('');
+  const [occurredAt, setOccurredAt] = useState(todayDateInputValue());
   const [tagsText, setTagsText] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
@@ -39,6 +41,7 @@ export default function RecordScreen() {
   const recorder = useRecorder({
     clearDraft: () => {
       setTitle('');
+      setOccurredAt(todayDateInputValue());
       setTagsText('');
       setNotes('');
     },
@@ -91,6 +94,7 @@ export default function RecordScreen() {
         albumId: selectedAlbumId,
         title: title.trim() || formatTimestampFileLabel(recorder.recordedAt),
         recordedAt: recorder.recordedAt,
+        occurredAt,
         tags: parseTags(tagsText),
         notes,
         audioUri: recorder.recordedUri,
@@ -98,6 +102,7 @@ export default function RecordScreen() {
       });
       recorder.clearRecording();
       setTitle('');
+      setOccurredAt(todayDateInputValue());
       setTagsText('');
       setNotes('');
       Alert.alert('Saved', 'The track was saved.');
@@ -135,6 +140,7 @@ export default function RecordScreen() {
             {
               title: title.trim() || formatTimestampFileLabel(recorder.recordedAt),
               recordedAt: recorder.recordedAt,
+              occurredAt,
               tags: parseTags(tagsText),
               notes,
               mimeType: recorder.recordedMimeType,
@@ -205,6 +211,12 @@ export default function RecordScreen() {
                 onChangeText={setTitle}
                 placeholder={formatTimestampFileLabel(recorder.recordedAt)}
                 value={title}
+              />
+              <DateField
+                helper="When this story took place."
+                label="Occurred at"
+                onChangeText={setOccurredAt}
+                value={occurredAt}
               />
               <LabeledField
                 label="Tags"
@@ -288,6 +300,7 @@ export default function RecordScreen() {
         onConfirm={() => {
           recorder.clearRecording();
           setTitle('');
+          setOccurredAt(todayDateInputValue());
           setTagsText('');
           setNotes('');
           setConfirmDiscardOpen(false);

@@ -29,6 +29,7 @@ type UpsertTrackInput = {
   track?: Track;
   title: string;
   recordedAt: string;
+  occurredAt: string;
   tags: string[];
   notes: string;
   imageUri?: string;
@@ -75,7 +76,11 @@ function asTrackMetadata(value: unknown): TrackMetadata | null {
   }
 
   const record = value as Record<string, unknown>;
-  if (typeof record.id !== 'string') {
+  if (
+    typeof record.id !== 'string' ||
+    typeof record.recordedAt !== 'string' ||
+    typeof record.occurredAt !== 'string'
+  ) {
     return null;
   }
 
@@ -84,7 +89,8 @@ function asTrackMetadata(value: unknown): TrackMetadata | null {
     id: record.id,
     albumId: String(record.albumId ?? ''),
     title: String(record.title ?? ''),
-    recordedAt: String(record.recordedAt ?? ''),
+    recordedAt: record.recordedAt,
+    occurredAt: record.occurredAt,
     createdAt: String(record.createdAt ?? new Date().toISOString()),
     updatedAt: String(record.updatedAt ?? new Date().toISOString()),
     tags: Array.isArray(record.tags)
@@ -288,8 +294,9 @@ export class DriveRepository {
       schemaVersion: APP_SCHEMA_VERSION,
       id: trackId,
       albumId: input.album.id,
-      title: input.title.trim() || formatDisplayDate(input.recordedAt),
+      title: input.title.trim() || formatDisplayDate(input.occurredAt),
       recordedAt: input.recordedAt,
+      occurredAt: input.occurredAt,
       createdAt: input.track?.createdAt ?? now,
       updatedAt: now,
       tags: input.tags,
@@ -339,6 +346,7 @@ export class DriveRepository {
       album,
       title: pending.title,
       recordedAt: pending.recordedAt,
+      occurredAt: pending.occurredAt,
       tags: pending.tags,
       notes: pending.notes,
       imageUri: pending.imageUri,
@@ -499,11 +507,8 @@ export class DriveRepository {
       if (!metadata?.title) {
         warnings.push('missing-track-title');
       }
-      if (!metadata?.recordedAt) {
-        warnings.push('missing-recorded-at');
-      }
-
       const recordedAt = metadata?.recordedAt || audioFile?.createdTime;
+      const occurredAt = metadata?.occurredAt || recordedAt || new Date().toISOString();
       const title =
         metadata?.title ||
         audioFile?.name.replace(/\.[^.]+$/, '') ||
@@ -517,6 +522,7 @@ export class DriveRepository {
         albumId: metadata?.albumId || fallbackAlbumId || '',
         title,
         recordedAt,
+        occurredAt,
         createdAt:
           metadata?.createdAt || audioFile?.createdTime || new Date().toISOString(),
         updatedAt:
@@ -542,8 +548,8 @@ export class DriveRepository {
     });
 
     return tracks.sort((a, b) => {
-      const left = a.recordedAt ?? a.createdAt;
-      const right = b.recordedAt ?? b.createdAt;
+      const left = a.occurredAt ?? a.recordedAt ?? a.createdAt;
+      const right = b.occurredAt ?? b.recordedAt ?? b.createdAt;
       return new Date(right).getTime() - new Date(left).getTime();
     });
   }

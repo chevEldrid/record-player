@@ -51,7 +51,7 @@ export function FloatingBottomNav() {
   return (
     <View className="absolute bottom-0 left-0 right-0" pointerEvents="box-none">
       <View
-        className="min-h-[84px] flex-row items-center rounded-t-appLg bg-[rgba(36,25,16,0.93)] px-4 pt-5"
+        className="min-h-[84px] flex-row items-center rounded-t-appLg bg-[#241910] px-4 pt-5"
         style={{
           paddingBottom: Math.max(insets.bottom, 12),
           shadowColor: 'rgba(43, 25, 10, 0.08)',

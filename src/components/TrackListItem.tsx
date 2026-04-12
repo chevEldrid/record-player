@@ -22,7 +22,7 @@ export function TrackListItem({
       <View className="flex-1 gap-1.5 rounded-appLg border border-appBorder bg-appCard p-4">
         <Text className="text-base font-bold text-appText">{track.title}</Text>
         <Text className="text-[13px] text-appMuted">
-          {formatDisplayDateOnly(track.recordedAt)}
+          {formatDisplayDateOnly(track.occurredAt)}
         </Text>
         {track.warnings.length ? (
           <View className="mt-1 flex-row flex-wrap gap-1.5">

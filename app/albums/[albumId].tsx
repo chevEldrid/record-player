@@ -54,7 +54,7 @@ export default function AlbumTracksScreen() {
               <TrackListItem
                 onPress={() =>
                   router.push({
-                    pathname: '/modals/track-details',
+                    pathname: '/albums/[albumId]/tracks/[trackId]',
                     params: { albumId: album.id, trackId: item.id },
                   })
                 }

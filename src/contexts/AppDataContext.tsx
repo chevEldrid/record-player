@@ -13,7 +13,7 @@ import {
   writePendingUploads,
 } from '@/storage/localStore';
 import { parseDriveUri } from '@/utils/driveUri';
-import { sortByRecordedAtDesc } from '@/utils/date';
+import { sortByOccurredAtDesc } from '@/utils/date';
 
 type CreateAlbumInput = {
   name: string;
@@ -24,6 +24,7 @@ type SaveTrackInput = {
   albumId: string;
   title: string;
   recordedAt: string;
+  occurredAt: string;
   tags: string[];
   notes: string;
   imageUri?: string;
@@ -61,6 +62,7 @@ function mergePendingUploads(albums: Album[], pendingUploads: PendingUpload[]) {
         albumId: album.id,
         title: item.title,
         recordedAt: item.recordedAt,
+        occurredAt: item.occurredAt,
         createdAt: item.createdAt,
         updatedAt: item.createdAt,
         tags: item.tags,
@@ -78,7 +80,7 @@ function mergePendingUploads(albums: Album[], pendingUploads: PendingUpload[]) {
     return {
       ...album,
       trackCount: album.tracks.length + pendingTracks.length,
-      tracks: sortByRecordedAtDesc([...album.tracks, ...pendingTracks]),
+      tracks: sortByOccurredAtDesc([...album.tracks, ...pendingTracks]),
     };
   });
 }
@@ -257,6 +259,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           album,
           title: input.title,
           recordedAt: input.recordedAt,
+          occurredAt: input.occurredAt,
           tags: input.tags,
           notes: input.notes,
           imageUri: input.imageUri,
@@ -304,6 +307,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         track,
         title: changes.title,
         recordedAt: changes.recordedAt,
+        occurredAt: changes.occurredAt,
         tags: changes.tags,
         notes: changes.notes,
         imageUri: changes.imageUri,

@@ -30,8 +30,8 @@ export default function RootLayout() {
             <Stack.Screen name="albums/new" options={{ headerShown: false }} />
             <Stack.Screen name="albums/[albumId]" options={{ headerShown: false }} />
             <Stack.Screen
-              name="modals/track-details"
-              options={{ presentation: 'modal', title: '' }}
+              name="albums/[albumId]/tracks/[trackId]"
+              options={{ headerShown: false }}
             />
           </Stack>
         </AppDataProvider>
