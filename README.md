@@ -64,8 +64,8 @@ Required variables:
 - Create a Google web OAuth client.
 - Create or reuse a browser API key that can be used with Google Picker.
 - Note the Google Cloud project number for Picker `setAppId(...)`.
-- For local dev, add `http://localhost:8081/auth/sign-in` as an authorized redirect URI when running `expo start --web`.
-- For production, add `https://pershie.com/auth/sign-in` and any preview-domain variant you plan to use.
+- For local dev, add `http://localhost:8081/` as an authorized redirect URI when running `expo start --web`.
+- For production, add `https://pershie.com/` and any preview-domain variant you plan to use.
 - Request the scopes `openid`, `profile`, `email`, and `https://www.googleapis.com/auth/drive.file`.
 
 5. Start the app:

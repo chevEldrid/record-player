@@ -7,7 +7,7 @@ import { colors, spacing } from '@/constants/theme';
 export default function TermsOfServiceScreen() {
   return (
     <ScreenShell scroll>
-      <Link href="/auth/sign-in" style={styles.backLink}>
+      <Link href="/" style={styles.backLink}>
         ←
       </Link>
 

@@ -11,7 +11,7 @@ export default function AppLayout() {
   }
 
   if (status !== 'signed-in') {
-    return <Redirect href="/auth/sign-in" />;
+    return <Redirect href="/" />;
   }
 
   return (
