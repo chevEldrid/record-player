@@ -2,14 +2,13 @@ import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { Link, Redirect, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { LabeledField } from '@/components/LabeledField';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenShell } from '@/components/ScreenShell';
 import {
   APP_NAME,
-  DRIVE_ALBUMS_FOLDER_NAME,
   DRIVE_ROOT_NAME,
   getGoogleClientId,
   getGoogleCloudProjectNumber,
@@ -36,28 +35,6 @@ function normalizeRootFolderName(value: string) {
   return value.trim() || DRIVE_ROOT_NAME;
 }
 
-function ModeCard({
-  active,
-  title,
-  body,
-  onPress,
-}: {
-  active: boolean;
-  title: string;
-  body: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={[styles.modeCard, active && styles.modeCardActive]}>
-      <Text style={styles.modeTitle}>{title}</Text>
-      <Text style={styles.modeBody}>{body}</Text>
-    </Pressable>
-  );
-}
-
 export default function IndexScreen() {
   const router = useRouter();
   const clientId = getGoogleClientId();
@@ -69,10 +46,8 @@ export default function IndexScreen() {
   const { finishSignIn, status, error } = useAuth();
   const [working, setWorking] = useState(false);
   const [authError, setAuthError] = useState<string>();
-  const [setupMode, setSetupMode] = useState<'create' | 'import'>('create');
   const [baseFolderName, setBaseFolderName] = useState(DRIVE_ROOT_NAME);
   const [pendingTokens, setPendingTokens] = useState<PendingTokens | null>(null);
-  const [pickedFolder, setPickedFolder] = useState<PickedFolder | null>(null);
   const [parentFolder, setParentFolder] = useState<PickedFolder | null>(null);
 
   const [, response, promptAsync] = AuthSession.useAuthRequest(
@@ -103,7 +78,6 @@ export default function IndexScreen() {
           ? Number(response.params.expires_in)
           : undefined,
       });
-      setPickedFolder(null);
       setParentFolder(null);
       setAuthError(undefined);
       return;
@@ -131,36 +105,6 @@ export default function IndexScreen() {
         signInError instanceof Error
           ? signInError.message
           : 'Google sign-in did not complete.'
-      );
-    } finally {
-      setWorking(false);
-    }
-  }
-
-  async function openPicker() {
-    if (!pendingTokens || !pickerApiKey || !pickerAppId) {
-      return;
-    }
-
-    setWorking(true);
-    setAuthError(undefined);
-    try {
-      const folder = await openGoogleFolderPicker({
-        accessToken: pendingTokens.accessToken,
-        apiKey: pickerApiKey,
-        appId: pickerAppId,
-      });
-
-      setPickedFolder(folder);
-
-      if (!folder) {
-        setAuthError(
-          'No folder was selected. You can reopen Google Picker or create a new library instead.'
-        );
-      }
-    } catch (pickerError) {
-      setAuthError(
-        pickerError instanceof Error ? pickerError.message : 'Failed to open Google Picker.'
       );
     } finally {
       setWorking(false);
@@ -241,123 +185,49 @@ export default function IndexScreen() {
         </View>
       ) : (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Choose your Experience</Text>
-          <View style={styles.modeRow}>
-            <ModeCard
-              active={setupMode === 'create'}
-              title="Create new"
-              body="Creates a new library in your Google Drive"
-              onPress={() => {
-                setSetupMode('create');
-                setPickedFolder(null);
-                setAuthError(undefined);
-              }}
-            />
-            <ModeCard
-              active={setupMode === 'import'}
-              title="Open existing"
-              body="Select an existing Pershie library"
-              onPress={() => {
-                setSetupMode('import');
-                setAuthError(undefined);
-              }}
+          <Text style={styles.cardTitle}>Select your Library</Text>
+          <LabeledField
+            label="Base folder name"
+            onChangeText={setBaseFolderName}
+            placeholder={DRIVE_ROOT_NAME}
+            value={baseFolderName}
+          />
+          <Text style={styles.cardBody}>
+            If no existing library is found, we&apos;ll make a new one.
+          </Text>
+          {parentFolder ? (
+            <View style={styles.libraryOption}>
+              <Text style={styles.libraryOptionTitle}>{parentFolder.name}</Text>
+              <Text style={styles.libraryOptionBody}>
+                Pershie will look here for {normalizeRootFolderName(baseFolderName)} and create it
+                if needed.
+              </Text>
+            </View>
+          ) : null}
+          {!pickerApiKey || !pickerAppId ? (
+            <Text style={styles.error}>
+              Choosing a parent folder needs `EXPO_PUBLIC_GOOGLE_API_KEY` and
+              `EXPO_PUBLIC_GOOGLE_CLOUD_PROJECT_NUMBER`.
+            </Text>
+          ) : null}
+          <View style={styles.actionStack}>
+            <PrimaryButton
+              disabled={!pickerApiKey || !pickerAppId}
+              label={parentFolder ? 'Choose a different parent folder' : 'Choose parent folder'}
+              onPress={chooseParentFolder}
+              variant="secondary"
             />
           </View>
-
-          {setupMode === 'create' ? (
-            <>
-              <LabeledField
-                label="Base folder name"
-                onChangeText={setBaseFolderName}
-                placeholder={DRIVE_ROOT_NAME}
-                value={baseFolderName}
-              />
-              {parentFolder ? (
-                <View style={styles.libraryOption}>
-                  <Text style={styles.libraryOptionTitle}>{parentFolder.name}</Text>
-                  <Text style={styles.libraryOptionBody}>
-                    New library will be created here as {normalizeRootFolderName(baseFolderName)}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={styles.cardBody}>
-                  By default Pershie creates the library at the top level of Drive. You can
-                  also choose an existing parent folder first.
-                </Text>
-              )}
-              <View style={styles.actionStack}>
-                <PrimaryButton
-                  disabled={!pickerApiKey || !pickerAppId}
-                  label={parentFolder ? 'Choose a different parent folder' : 'Choose parent folder'}
-                  onPress={chooseParentFolder}
-                  variant="secondary"
-                />
-              </View>
-              <PrimaryButton
-                label="Create new library"
-                loading={working}
-                onPress={() =>
-                  finalizeSignIn({
-                    parentFolderId: parentFolder?.id,
-                    rootFolderName: normalizeRootFolderName(baseFolderName),
-                  })
-                }
-              />
-            </>
-          ) : (
-            <>
-              {!pickerApiKey || !pickerAppId ? (
-                <Text style={styles.error}>
-                  Import mode needs `EXPO_PUBLIC_GOOGLE_API_KEY` and
-                  `EXPO_PUBLIC_GOOGLE_CLOUD_PROJECT_NUMBER`.
-                </Text>
-              ) : null}
-              {pickedFolder ? (
-                <View style={styles.libraryOption}>
-                  <Text style={styles.libraryOptionTitle}>{pickedFolder.name}</Text>
-                  <Text style={styles.libraryOptionBody}>
-                    {pickedFolder.name}/{DRIVE_ALBUMS_FOLDER_NAME}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={styles.cardBody}>
-                  Choose the existing base folder you want Pershie to reconnect to.
-                </Text>
-              )}
-              <View style={styles.actionStack}>
-                <PrimaryButton
-                  disabled={!pickerApiKey || !pickerAppId}
-                  label={pickedFolder ? 'Use selected folder' : 'Open Google Picker'}
-                  loading={working}
-                  onPress={() => {
-                    if (pickedFolder) {
-                      finalizeSignIn({
-                        rootFolderId: pickedFolder.id,
-                        rootFolderName: pickedFolder.name,
-                        parentFolderId: undefined,
-                      });
-                      return;
-                    }
-
-                    openPicker();
-                  }}
-                />
-                <PrimaryButton
-                  label={pickedFolder ? 'Choose a different folder' : 'Create a new library instead'}
-                  onPress={() => {
-                    if (pickedFolder) {
-                      openPicker();
-                      return;
-                    }
-
-                    setSetupMode('create');
-                    setAuthError(undefined);
-                  }}
-                  variant="secondary"
-                />
-              </View>
-            </>
-          )}
+          <PrimaryButton
+            label="Go to Library"
+            loading={working}
+            onPress={() =>
+              finalizeSignIn({
+                parentFolderId: parentFolder?.id,
+                rootFolderName: normalizeRootFolderName(baseFolderName),
+              })
+            }
+          />
 
           {error || authError ? <Text style={styles.error}>{error ?? authError}</Text> : null}
         </View>
@@ -449,31 +319,6 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 14,
     lineHeight: 22,
-  },
-  modeRow: {
-    gap: spacing.sm,
-  },
-  modeCard: {
-    backgroundColor: colors.backgroundElevated,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    gap: spacing.xs,
-    padding: spacing.md,
-  },
-  modeCardActive: {
-    backgroundColor: colors.accentSoft,
-    borderColor: colors.accent,
-  },
-  modeTitle: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  modeBody: {
-    color: colors.textMuted,
-    fontSize: 13,
-    lineHeight: 20,
   },
   libraryOption: {
     backgroundColor: colors.accentSoft,
