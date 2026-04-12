@@ -58,9 +58,10 @@ export default function AboutScreen() {
 
 const styles = StyleSheet.create({
   backLink: {
-    color: colors.accent,
-    fontSize: 22,
-    fontWeight: '700',
+    color: colors.text,
+    fontSize: 32,
+    fontWeight: '400',
+    lineHeight: 32,
     marginBottom: spacing.lg,
   },
   section: {

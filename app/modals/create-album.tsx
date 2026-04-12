@@ -66,8 +66,10 @@ export default function CreateAlbumModal() {
         value={name}
       />
 
-      <PrimaryButton label="Choose Picture" onPress={chooseImage} variant="secondary" />
-      <PrimaryButton label="Create Album" loading={saving} onPress={submit} />
+      <View style={styles.actionStack}>
+        <PrimaryButton label="Choose Picture" onPress={chooseImage} variant="secondary" />
+        <PrimaryButton label="Create Album" loading={saving} onPress={submit} />
+      </View>
     </ScreenShell>
   );
 }
@@ -88,5 +90,9 @@ const styles = StyleSheet.create({
   preview: {
     alignItems: 'center',
     marginBottom: spacing.lg,
+  },
+  actionStack: {
+    gap: spacing.sm,
+    marginTop: spacing.md,
   },
 });
