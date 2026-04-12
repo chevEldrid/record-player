@@ -5,13 +5,11 @@ import { useRouter } from 'expo-router';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenShell } from '@/components/ScreenShell';
 import { useAuth } from '@/contexts/AuthContext';
-import { usePwa } from '@/contexts/PwaContext';
 import { colors, radii, spacing } from '@/constants/theme';
 
 export default function IndexScreen() {
   const router = useRouter();
   const { status } = useAuth();
-  const { canInstall, install, isInstalled } = usePwa();
 
   if (status === 'loading') {
     return null;
@@ -30,49 +28,15 @@ export default function IndexScreen() {
           </View>
         </View>
         <Text style={styles.title}>Pershie</Text>
-        <Text style={styles.body}>
-          A warm, browser-based recorder for personal-history audio. Use it immediately, then sign
-          in later if you want your recordings synced into Google Drive.
-        </Text>
       </View>
 
       <View style={styles.actions}>
         <PrimaryButton label="Open Recorder" onPress={() => router.push('/offline-record')} />
-        {canInstall ? (
-          <PrimaryButton label="Install App" onPress={() => void install()} variant="secondary" />
-        ) : null}
         <PrimaryButton
           label="Sign In to Sync"
           onPress={() => router.push('/auth/sign-in')}
-          variant={canInstall ? 'primary' : 'secondary'}
+          variant="primary"
         />
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Use it your way</Text>
-        <Text style={styles.cardBody}>
-          Record without an account, keep files on this device, and upload later when you have a
-          connection.
-        </Text>
-        <Text style={styles.cardBody}>
-          Or sign in with Google and organize everything directly into albums in your Drive.
-        </Text>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>
-          {isInstalled ? 'Installed on this device' : 'Installable as an app'}
-        </Text>
-        <Text style={styles.cardBody}>
-          Pershie can launch in its own standalone window, keep the recorder available if your
-          connection drops, and let people download recordings even while offline.
-        </Text>
-        {!canInstall && !isInstalled ? (
-          <Text style={styles.cardBody}>
-            If your browser does not show an install button, open the browser menu and choose Add
-            to Home Screen or Install App.
-          </Text>
-        ) : null}
       </View>
     </ScreenShell>
   );
