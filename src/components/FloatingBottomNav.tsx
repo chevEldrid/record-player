@@ -5,29 +5,56 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radii, spacing } from '@/constants/theme';
 
 type NavItem = {
+  key: 'library' | 'record' | 'user';
   label: string;
   route: '/(app)/library' | '/(app)/record' | '/(app)/user';
-  activeOn: string[];
 };
 
 const navItems: NavItem[] = [
-  { label: 'Library', route: '/(app)/library', activeOn: ['/(app)/library', '/albums/'] },
-  { label: 'Record', route: '/(app)/record', activeOn: ['/(app)/record'] },
-  { label: 'User', route: '/(app)/user', activeOn: ['/(app)/user'] },
+  { key: 'library', label: 'Library', route: '/(app)/library' },
+  { key: 'record', label: 'Record', route: '/(app)/record' },
+  { key: 'user', label: 'User', route: '/(app)/user' },
 ];
 
 export const FLOATING_NAV_HEIGHT = 108;
+
+function normalizePathname(pathname: string) {
+  return pathname.replace(/\/\([^/]+\)/g, '') || '/';
+}
+
+function getActiveSection(pathname: string): NavItem['key'] | null {
+  const normalizedPath = normalizePathname(pathname);
+
+  if (
+    normalizedPath === '/library' ||
+    normalizedPath.startsWith('/library/') ||
+    normalizedPath.startsWith('/albums/')
+  ) {
+    return 'library';
+  }
+
+  if (normalizedPath === '/record' || normalizedPath.startsWith('/record/')) {
+    return 'record';
+  }
+
+  if (normalizedPath === '/user' || normalizedPath.startsWith('/user/')) {
+    return 'user';
+  }
+
+  return null;
+}
 
 export function FloatingBottomNav() {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const activeSection = getActiveSection(pathname);
 
   return (
     <View pointerEvents="box-none" style={styles.wrapper}>
       <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         {navItems.map((item) => {
-          const isActive = item.activeOn.some((segment) => pathname.startsWith(segment));
+          const isActive = item.key === activeSection;
 
           return (
             <View key={item.label} style={styles.navSlot}>

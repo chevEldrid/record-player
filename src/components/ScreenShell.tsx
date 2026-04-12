@@ -47,6 +47,7 @@ export function ScreenShell({
         {scroll ? (
           <ScrollView
             ref={scrollRef}
+            style={styles.scrollView}
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled">
             {content}
@@ -66,9 +67,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   frame: {
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
+    backgroundColor: colors.background,
     flex: 1,
   },
   bottomNavPadding: {
@@ -79,6 +82,11 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
   },
   scrollContent: {
+    backgroundColor: colors.background,
     flexGrow: 1,
+  },
+  scrollView: {
+    backgroundColor: colors.background,
+    flex: 1,
   },
 });

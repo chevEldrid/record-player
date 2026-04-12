@@ -9,8 +9,10 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AlbumCard } from '@/components/AlbumCard';
+import { FLOATING_NAV_HEIGHT } from '@/components/FloatingBottomNav';
 import { ScreenShell } from '@/components/ScreenShell';
 import { colors, radii, spacing } from '@/constants/theme';
 import { useAppData } from '@/contexts/AppDataContext';
@@ -73,9 +75,11 @@ export default function LibraryScreen() {
   const router = useRouter();
   const { albums, error, isSyncing, status } = useAppData();
   const { height, width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const shelfColumns = width >= 900 ? 5 : width >= 640 ? 4 : 3;
   const coverSize = width >= 900 ? 140 : width >= 640 ? 122 : 96;
   const targetShelfCount = estimateShelfCount(height);
+  const minimumShelfHeight = height + FLOATING_NAV_HEIGHT + insets.bottom;
   const shelfItems = useMemo(
     () => [...albums, { id: 'create-album-tile' } as Album],
     [albums]
@@ -109,10 +113,11 @@ export default function LibraryScreen() {
         </View>
       ) : (
         <ScrollView
+          style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
-          <View style={[styles.bookshelf, { minHeight: height - 92 }]}>
+          <View style={[styles.bookshelf, { minHeight: minimumShelfHeight }]}>
             {shelfRows.map((row, rowIndex) => (
               <View key={`row-${rowIndex}`} style={styles.shelfSection}>
                 <View style={styles.shelfBack} />
@@ -171,14 +176,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   scrollContent: {
+    backgroundColor: '#C78E4A',
     flexGrow: 1,
-    paddingBottom: spacing.xl,
+    paddingBottom: 0,
+  },
+  scrollView: {
+    backgroundColor: '#C78E4A',
+    flex: 1,
   },
   bookshelf: {
     backgroundColor: '#C78E4A',
     flex: 1,
     overflow: 'hidden',
-    paddingBottom: spacing.xl,
+    paddingBottom: FLOATING_NAV_HEIGHT + spacing.xl,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.lg,
   },

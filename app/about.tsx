@@ -52,6 +52,13 @@ export default function AboutScreen() {
           Nothing - you keep all your own data.
         </Text>
       </View>
+
+      <View style={styles.section}>
+        <Text style={styles.heading}>About the Author</Text>
+        <Link href="https://github.com/chevEldrid" style={styles.authorLink}>
+          github.com/chevEldrid
+        </Link>
+      </View>
     </ScreenShell>
   );
 }
@@ -82,6 +89,11 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 15,
     lineHeight: 24,
+  },
+  authorLink: {
+    color: colors.accent,
+    fontSize: 15,
+    fontWeight: '700',
   },
   mono: {
     backgroundColor: colors.backgroundElevated,
