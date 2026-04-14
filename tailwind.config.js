@@ -8,7 +8,7 @@ module.exports = {
         appBg: '#F9C56D',
         appBgElevated: '#FAFAFA',
         appCard: '#FFFFFF',
-        appCardAlt: '#F5F5F5',
+        appCardAlt: '#E3E3E3',
         appBorder: '#BDBDBD',
         appText: '#212121',
         appMuted: '#757575',

@@ -6,6 +6,7 @@ import { AppCard } from '@/components/AppCard';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { DateField } from '@/components/DateField';
 import { EmptyState } from '@/components/EmptyState';
+import { FLOATING_NAV_HEIGHT } from '@/components/FloatingBottomNav';
 import { LabeledField } from '@/components/LabeledField';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { RecordedFileCard } from '@/components/RecordedFileCard';
@@ -168,6 +169,7 @@ export default function RecordScreen() {
   const extension = extensionForMimeType(recorder.recordedMimeType);
   const displayName =
     slugify(title.trim()) || formatTimestampFileLabel(recorder.recordedAt);
+  const hasRecordedTrack = Boolean(recorder.recordedUri && recorder.recordedAt);
 
   return (
     <ScreenShell bottomNav>
@@ -177,84 +179,85 @@ export default function RecordScreen() {
             alignItems: 'stretch',
             flexGrow: 1,
             gap: 20,
-            justifyContent: 'center',
-            paddingBottom: 28,
+            paddingBottom: FLOATING_NAV_HEIGHT + 28,
           }}
           keyboardShouldPersistTaps="handled">
-          <View className="items-center px-4 py-7">
-            <RecorderButton
-              activeBackgroundClassName="bg-appRecordLiveRing"
-              activeCoreClassName="bg-appRecordCore"
-              audioLevel={recorder.audioLevel}
-              coreClassName="h-[78px] w-[78px] rounded-full bg-appRecordCore"
-              disabled={recorder.hasRecordedAudio && !recorder.isRecording}
-              isLive={recorder.isRecording}
-              onPress={recorder.isRecording ? recorder.stopRecording : handleStartRecording}
-              outerClassName="h-[148px] w-[148px] items-center justify-center rounded-full bg-appRecordRing"
-            />
-          </View>
+          <View className="flex-1 justify-center gap-5">
+            <View className="items-center py-7">
+              <RecorderButton
+                activeBackgroundClassName="bg-appRecordLiveRing"
+                activeCoreClassName="bg-appRecordCore"
+                audioLevel={recorder.audioLevel}
+                coreClassName="h-[78px] w-[78px] rounded-full bg-appRecordCore"
+                disabled={recorder.hasRecordedAudio && !recorder.isRecording}
+                isLive={recorder.isRecording}
+                onPress={recorder.isRecording ? recorder.stopRecording : handleStartRecording}
+                outerClassName="h-[148px] w-[148px] items-center justify-center rounded-full bg-appRecordRing"
+              />
+            </View>
 
-          {recorder.recordedUri && recorder.recordedAt ? (
-            <RecordedFileCard
-              fileName={`${displayName}.${extension}`}
-              onDiscard={() => setConfirmDiscardOpen(true)}
-              recordedAtLabel={formatDisplayDate(recorder.recordedAt)}
-              recordedUri={recorder.recordedUri}>
-              <Pressable className="rounded-appLg border border-appBorder bg-appCard p-4" onPress={() => setSelectorOpen(true)}>
-                <Text className="text-xs uppercase text-appMuted">Save to</Text>
-                <Text className="mt-1 text-[18px] font-bold text-appText" numberOfLines={1}>
-                  {selectedAlbum?.name ?? 'Choose album'}
-                </Text>
-              </Pressable>
-              <LabeledField
-                label="Track title"
-                onChangeText={setTitle}
-                placeholder={formatTimestampFileLabel(recorder.recordedAt)}
-                value={title}
-              />
-              <DateField
-                helper="When this story took place."
-                label="Occurred at"
-                onChangeText={setOccurredAt}
-                value={occurredAt}
-              />
-              <LabeledField
-                label="Tags"
-                onChangeText={setTagsText}
-                placeholder="family, travel, childhood"
-                value={tagsText}
-              />
-              <LabeledField
-                label="Notes"
-                multiline
-                onChangeText={setNotes}
-                placeholder="Context, prompts, or details to remember."
-                value={notes}
-              />
-              {!isOnline ? (
-                <View className="gap-1.5 rounded-appMd border border-appBorder bg-appAccentSoft p-4">
-                  <Text className="text-sm font-bold text-appText">You&apos;re offline</Text>
-                  <Text className="text-[13px] leading-5 text-appMuted">
-                    You are currently offline. Syncing is currently disabled.
+            {hasRecordedTrack ? (
+              <RecordedFileCard
+                fileName={`${displayName}.${extension}`}
+                onDiscard={() => setConfirmDiscardOpen(true)}
+                recordedAtLabel={formatDisplayDate(recorder.recordedAt!)}
+                recordedUri={recorder.recordedUri!}>
+                <Pressable className="rounded-appLg border border-appBorder bg-appCard p-4" onPress={() => setSelectorOpen(true)}>
+                  <Text className="text-xs uppercase text-appMuted">Save to</Text>
+                  <Text className="mt-1 text-[18px] font-bold text-appText" numberOfLines={1}>
+                    {selectedAlbum?.name ?? 'Choose album'}
                   </Text>
+                </Pressable>
+                <LabeledField
+                  label="Track title"
+                  onChangeText={setTitle}
+                  placeholder={formatTimestampFileLabel(recorder.recordedAt)}
+                  value={title}
+                />
+                <DateField
+                  helper="When this story took place."
+                  label="Occurred at"
+                  onChangeText={setOccurredAt}
+                  value={occurredAt}
+                />
+                <LabeledField
+                  label="Tags"
+                  onChangeText={setTagsText}
+                  placeholder="family, travel, childhood"
+                  value={tagsText}
+                />
+                <LabeledField
+                  label="Notes"
+                  multiline
+                  onChangeText={setNotes}
+                  placeholder="Context, prompts, or details to remember."
+                  value={notes}
+                />
+                {!isOnline ? (
+                  <View className="gap-1.5 rounded-appMd border border-appBorder bg-appAccentSoft p-4">
+                    <Text className="text-sm font-bold text-appText">You&apos;re offline</Text>
+                    <Text className="text-[13px] leading-5 text-appMuted">
+                      You are currently offline. Syncing is currently disabled.
+                    </Text>
+                  </View>
+                ) : null}
+                <View className="gap-2">
+                  <PrimaryButton
+                    disabled={!isOnline}
+                    label="Save to Album"
+                    loading={saving}
+                    onPress={saveCurrentRecording}
+                  />
+                  <PrimaryButton
+                    label="Download"
+                    loading={downloading}
+                    onPress={downloadCurrentRecording}
+                    variant="secondary"
+                  />
                 </View>
-              ) : null}
-              <View className="gap-2">
-                <PrimaryButton
-                  disabled={!isOnline}
-                  label="Save to Album"
-                  loading={saving}
-                  onPress={saveCurrentRecording}
-                />
-                <PrimaryButton
-                  label="Download"
-                  loading={downloading}
-                  onPress={downloadCurrentRecording}
-                  variant="secondary"
-                />
-              </View>
-            </RecordedFileCard>
-          ) : null}
+              </RecordedFileCard>
+            ) : null}
+          </View>
 
           {pendingUploads.length ? (
             <Text className="mt-4 px-4 text-[13px] text-appAccent">
