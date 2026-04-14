@@ -18,7 +18,11 @@ import {
 } from '@/constants/config';
 import { useAuth } from '@/contexts/AuthContext';
 import type { LibraryConfig } from '@/domain/models';
-import { googleScopes } from '@/services/googleAuth';
+import {
+  googleScopes,
+  isGoogleAuthCanceled,
+  logGoogleAuthCancellation,
+} from '@/services/googleAuth';
 import { openGoogleFolderPicker, type PickedFolder } from '@/services/googlePicker';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -84,6 +88,20 @@ export default function IndexScreen() {
     }
 
     if (response.type === 'error') {
+      if (
+        isGoogleAuthCanceled({
+          code: response.params.error,
+          message: response.error?.message,
+        })
+      ) {
+        logGoogleAuthCancellation('sign-in', {
+          code: response.params.error,
+          message: response.error?.message,
+        });
+        setAuthError(undefined);
+        return;
+      }
+
       setAuthError(response.error?.message ?? 'Google sign-in did not complete.');
     }
   }, [response]);
