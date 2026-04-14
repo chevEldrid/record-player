@@ -19,6 +19,60 @@ type RequestOptions = {
   headers?: Record<string, string>;
 };
 
+type GoogleApiErrorPayload = {
+  error?: {
+    message?: string;
+    errors?: Array<{
+      message?: string;
+      reason?: string;
+    }>;
+    details?: Array<{
+      reason?: string;
+    }>;
+  };
+};
+
+function parseGoogleApiError(raw?: string | null) {
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw) as GoogleApiErrorPayload;
+  } catch {
+    return null;
+  }
+}
+
+function getDriveErrorMessage(raw?: string | null, fallback?: string) {
+  const parsed = parseGoogleApiError(raw);
+  const message =
+    parsed?.error?.message ??
+    parsed?.error?.errors?.find((entry) => entry.message)?.message;
+
+  return message || raw || fallback || 'Google Drive request failed.';
+}
+
+export function isDriveScopeInsufficientError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  const parsed = parseGoogleApiError(error.message);
+  const reasons = [
+    ...(parsed?.error?.errors?.map((entry) => entry.reason?.toLowerCase() ?? '') ?? []),
+    ...(parsed?.error?.details?.map((entry) => entry.reason?.toLowerCase() ?? '') ?? []),
+  ];
+
+  return (
+    message.includes('insufficient authentication scopes') ||
+    message.includes('insufficient permission') ||
+    reasons.includes('access_token_scope_insufficient') ||
+    reasons.includes('insufficientpermissions')
+  );
+}
+
 export class DriveApi {
   constructor(private readonly session: GoogleSession) {}
 
@@ -37,7 +91,7 @@ export class DriveApi {
 
     if (!response.ok) {
       const message = await response.text();
-      throw new Error(message || 'Google Drive request failed.');
+      throw new Error(getDriveErrorMessage(message, 'Google Drive request failed.'));
     }
 
     if (response.status === 204) {
@@ -59,7 +113,7 @@ export class DriveApi {
 
     if (!response.ok) {
       const message = await response.text();
-      throw new Error(message || 'Google Drive upload failed.');
+      throw new Error(getDriveErrorMessage(message, 'Google Drive upload failed.'));
     }
 
     return response;
@@ -186,7 +240,7 @@ export class DriveApi {
 
     if (!response.ok) {
       const message = await response.text();
-      throw new Error(message || 'Drive file content upload failed.');
+      throw new Error(getDriveErrorMessage(message, 'Drive file content upload failed.'));
     }
 
     return (await response.json()) as DriveFile;
@@ -200,7 +254,8 @@ export class DriveApi {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to download file content.');
+      const message = await response.text();
+      throw new Error(getDriveErrorMessage(message, 'Failed to download file content.'));
     }
 
     return response.text();
@@ -214,7 +269,8 @@ export class DriveApi {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to download binary file.');
+      const message = await response.text();
+      throw new Error(getDriveErrorMessage(message, 'Failed to download binary file.'));
     }
 
     return response.blob();

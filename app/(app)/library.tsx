@@ -83,7 +83,7 @@ function AddAlbumTile({
 
 export default function LibraryScreen() {
   const router = useRouter();
-  const { albums, error, isSyncing, status } = useAppData();
+  const { albums, error, isSyncing, requiresDriveReauth, status } = useAppData();
   const { height, width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const shelfColumns = width >= 900 ? 5 : width >= 640 ? 4 : 3;
@@ -115,7 +115,9 @@ export default function LibraryScreen() {
   return (
     <ScreenShell bottomNav extendBehindBottomNav padded={false}>
       {isSyncing ? <Text className="px-4 pt-2.5 text-[13px] text-appAccent">Syncing pending uploads...</Text> : null}
-      {error ? <Text className="px-4 pt-2.5 text-[13px] text-appDanger">{error}</Text> : null}
+      {error && !requiresDriveReauth ? (
+        <Text className="px-4 pt-2.5 text-[13px] text-appDanger">{error}</Text>
+      ) : null}
 
       {status === 'loading' && !albums.length ? (
         <View className="flex-1 items-center justify-center">

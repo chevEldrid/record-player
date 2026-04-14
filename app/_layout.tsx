@@ -22,7 +22,6 @@ export default function RootLayout() {
               contentStyle: { backgroundColor: colors.background },
             }}>
             <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="offline-record" options={{ headerShown: false }} />
             <Stack.Screen name="about" options={{ headerShown: false }} />
             <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
             <Stack.Screen name="terms-of-service" options={{ headerShown: false }} />

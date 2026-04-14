@@ -7,6 +7,28 @@ type StoredSession = GoogleSession;
 
 export const googleScopes = ['openid', 'profile', 'email', DRIVE_SCOPE];
 
+type AuthErrorLike = {
+  code?: string;
+  message?: string;
+};
+
+export function isGoogleAuthCanceled(error?: AuthErrorLike | null) {
+  const code = error?.code?.toLowerCase() ?? '';
+  const message = error?.message?.toLowerCase() ?? '';
+
+  return (
+    code === 'access_denied' ||
+    code === 'user_cancelled' ||
+    message.includes('denied the request') ||
+    message.includes('user canceled') ||
+    message.includes('user cancelled')
+  );
+}
+
+export function logGoogleAuthCancellation(context: 'sign-in' | 'reauthorize', error?: AuthErrorLike | null) {
+  console.info(`[auth:${context}] Google auth was canceled by the user.`, error);
+}
+
 export async function fetchGoogleUser(accessToken: string) {
   const response = await fetch(GOOGLE_DISCOVERY.userInfoEndpoint, {
     headers: {

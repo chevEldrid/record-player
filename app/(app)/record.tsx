@@ -1,21 +1,16 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, Text, View } from 'react-native';
 
 import { AppCard } from '@/components/AppCard';
-import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { DateField } from '@/components/DateField';
 import { EmptyState } from '@/components/EmptyState';
-import { LabeledField } from '@/components/LabeledField';
 import { PrimaryButton } from '@/components/PrimaryButton';
-import { RecordedFileCard } from '@/components/RecordedFileCard';
-import { RecorderButton } from '@/components/RecorderButton';
-import { ScreenShell } from '@/components/ScreenShell';
+import { RecorderExperience, type RecordedContext } from '@/components/RecorderExperience';
 import { useAppData } from '@/contexts/AppDataContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import { useRecorder } from '@/hooks/useRecorder';
-import { formatDisplayDate, formatTimestampFileLabel, todayDateInputValue } from '@/utils/date';
-import { downloadBlob, extensionForMimeType } from '@/utils/recording';
+import { formatTimestampFileLabel, todayDateInputValue } from '@/utils/date';
+import { downloadAudioFile } from '@/utils/recording';
 import { slugify } from '@/utils/slug';
 
 function parseTags(value: string) {
@@ -26,9 +21,12 @@ function parseTags(value: string) {
 }
 
 export default function RecordScreen() {
+  const router = useRouter();
   const params = useLocalSearchParams<{ albumId?: string }>();
+  const { status } = useAuth();
   const { albums, pendingUploads, saveTrack } = useAppData();
   const { isOnline } = useNetworkStatus();
+  const [fileName, setFileName] = useState('');
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | undefined>(params.albumId);
   const [title, setTitle] = useState('');
   const [occurredAt, setOccurredAt] = useState(todayDateInputValue());
@@ -37,39 +35,29 @@ export default function RecordScreen() {
   const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [selectorOpen, setSelectorOpen] = useState(false);
-  const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
-  const recorder = useRecorder({
-    clearDraft: () => {
-      setTitle('');
-      setOccurredAt(todayDateInputValue());
-      setTagsText('');
-      setNotes('');
-    },
-  });
+
+  if (status === 'loading') {
+    return null;
+  }
 
   useEffect(() => {
-    if (!selectedAlbumId && albums[0]) {
+    if (status === 'signed-in' && !selectedAlbumId && albums[0]) {
       setSelectedAlbumId(albums[0].id);
     }
-  }, [albums, selectedAlbumId]);
+  }, [albums, selectedAlbumId, status]);
 
   const selectedAlbum = useMemo(
     () => albums.find((album) => album.id === selectedAlbumId),
     [albums, selectedAlbumId]
   );
 
-  async function handleStartRecording() {
-    try {
-      await recorder.startRecording();
-    } catch (error) {
-      Alert.alert(
-        'Microphone needed',
-        error instanceof Error ? error.message : 'Pershie needs microphone access to record.'
-      );
-    }
-  }
-
-  async function saveCurrentRecording() {
+  async function saveCurrentRecording({
+    clearRecording,
+    fileName,
+    recordedAt,
+    recordedMimeType,
+    recordedUri,
+  }: Pick<RecordedContext, 'clearRecording' | 'fileName' | 'recordedAt' | 'recordedMimeType' | 'recordedUri'>) {
     if (!isOnline) {
       Alert.alert(
         'Connection lost',
@@ -83,24 +71,19 @@ export default function RecordScreen() {
       return;
     }
 
-    if (!recorder.recordedUri || !recorder.recordedAt) {
-      Alert.alert('Record first', 'Create audio before saving it to an album.');
-      return;
-    }
-
     setSaving(true);
     try {
       await saveTrack({
         albumId: selectedAlbumId,
-        title: title.trim() || formatTimestampFileLabel(recorder.recordedAt),
-        recordedAt: recorder.recordedAt,
+        title: title.trim() || fileName,
+        recordedAt,
         occurredAt,
         tags: parseTags(tagsText),
         notes,
-        audioUri: recorder.recordedUri,
-        mimeType: recorder.recordedMimeType,
+        audioUri: recordedUri,
+        mimeType: recordedMimeType,
       });
-      recorder.clearRecording();
+      clearRecording();
       setTitle('');
       setOccurredAt(todayDateInputValue());
       setTagsText('');
@@ -116,45 +99,47 @@ export default function RecordScreen() {
     }
   }
 
-  async function downloadCurrentRecording() {
-    if (!recorder.recordedUri || !recorder.recordedAt) {
-      return;
-    }
+  async function saveOfflineRecording({
+    clearRecording,
+    extension,
+    fileName: defaultFileName,
+    recordedMimeType,
+    recordedUri,
+  }: Pick<RecordedContext, 'clearRecording' | 'extension' | 'fileName' | 'recordedMimeType' | 'recordedUri'>) {
+    setSaving(true);
+    try {
+      const resolvedName = slugify(fileName.trim()) || defaultFileName;
 
+      await downloadAudioFile(recordedUri, `${resolvedName}.${extension}`);
+      clearRecording();
+      setFileName('');
+      Alert.alert(
+        'Saved to device',
+        recordedMimeType === 'audio/mpeg'
+          ? 'The recording was downloaded to this device.'
+          : `The recording was downloaded as .${extension}. Browser recording here does not produce a true MP3.`
+      );
+    } catch (error) {
+      Alert.alert(
+        'Could not save',
+        error instanceof Error ? error.message : 'Saving the recording to your device failed.'
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function downloadCurrentRecording({
+    extension,
+    fileName,
+    recordedUri,
+  }: Pick<RecordedContext, 'extension' | 'fileName' | 'recordedUri'>) {
     setDownloading(true);
     try {
-      const response = await fetch(recorder.recordedUri);
-      if (!response.ok) {
-        throw new Error('Could not read the recorded audio.');
-      }
+      const baseName = slugify(title.trim()) || fileName;
 
-      const audioBlob = await response.blob();
-      const baseName = slugify(title.trim()) || formatTimestampFileLabel(recorder.recordedAt);
-      const extension = extensionForMimeType(recorder.recordedMimeType);
-
-      downloadBlob(audioBlob, `${baseName}.${extension}`);
-
-      const metadataBlob = new Blob(
-        [
-          JSON.stringify(
-            {
-              title: title.trim() || formatTimestampFileLabel(recorder.recordedAt),
-              recordedAt: recorder.recordedAt,
-              occurredAt,
-              tags: parseTags(tagsText),
-              notes,
-              mimeType: recorder.recordedMimeType,
-            },
-            null,
-            2
-          ),
-        ],
-        {
-          type: 'application/json',
-        }
-      );
-      downloadBlob(metadataBlob, `${baseName}.json`);
-      Alert.alert('Downloaded', 'The recording and its metadata were downloaded to this device.');
+      await downloadAudioFile(recordedUri, `${baseName}.${extension}`);
+      Alert.alert('Downloaded', 'The recording was downloaded to this device.');
     } catch (error) {
       Alert.alert(
         'Could not download',
@@ -165,112 +150,82 @@ export default function RecordScreen() {
     }
   }
 
-  const extension = extensionForMimeType(recorder.recordedMimeType);
-  const displayName =
-    slugify(title.trim()) || formatTimestampFileLabel(recorder.recordedAt);
-
   return (
-    <ScreenShell bottomNav>
-      {albums.length ? (
-        <ScrollView
-          contentContainerStyle={{
-            alignItems: 'stretch',
-            flexGrow: 1,
-            gap: 20,
-            justifyContent: 'center',
-            paddingBottom: 28,
+    <>
+      {status === 'signed-in' ? (
+        albums.length ? (
+        <RecorderExperience
+          isOnline={isOnline}
+          mode="library"
+          notes={notes}
+          onClearDraft={() => {
+            setTitle('');
+            setOccurredAt(todayDateInputValue());
+            setTagsText('');
+            setNotes('');
           }}
-          keyboardShouldPersistTaps="handled">
-          <View className="items-center px-4 py-7">
-            <RecorderButton
-              activeBackgroundClassName="bg-[#4B1B16]"
-              activeCoreClassName="rounded-[28px]"
-              audioLevel={recorder.audioLevel}
-              coreClassName="h-24 w-24 rounded-full bg-[#D3372F]"
-              disabled={recorder.hasRecordedAudio && !recorder.isRecording}
-              isLive={recorder.isRecording}
-              onPress={recorder.isRecording ? recorder.stopRecording : handleStartRecording}
-              outerClassName="h-[188px] w-[188px] items-center justify-center rounded-full bg-[#351A16]"
-            />
-          </View>
-
-          {recorder.recordedUri && recorder.recordedAt ? (
-            <RecordedFileCard
-              fileName={`${displayName}.${extension}`}
-              onDiscard={() => setConfirmDiscardOpen(true)}
-              recordedAtLabel={formatDisplayDate(recorder.recordedAt)}
-              recordedUri={recorder.recordedUri}>
-              <Pressable className="rounded-appLg border border-appBorder bg-appCard p-4" onPress={() => setSelectorOpen(true)}>
-                <Text className="text-xs uppercase text-appMuted">Save to</Text>
-                <Text className="mt-1 text-[18px] font-bold text-appText" numberOfLines={1}>
-                  {selectedAlbum?.name ?? 'Choose album'}
-                </Text>
-              </Pressable>
-              <LabeledField
-                label="Track title"
-                onChangeText={setTitle}
-                placeholder={formatTimestampFileLabel(recorder.recordedAt)}
-                value={title}
-              />
-              <DateField
-                helper="When this story took place."
-                label="Occurred at"
-                onChangeText={setOccurredAt}
-                value={occurredAt}
-              />
-              <LabeledField
-                label="Tags"
-                onChangeText={setTagsText}
-                placeholder="family, travel, childhood"
-                value={tagsText}
-              />
-              <LabeledField
-                label="Notes"
-                multiline
-                onChangeText={setNotes}
-                placeholder="Context, prompts, or details to remember."
-                value={notes}
-              />
-              {!isOnline ? (
-                <View className="gap-1.5 rounded-appMd border border-appBorder bg-appAccentSoft p-4">
-                  <Text className="text-sm font-bold text-appText">You&apos;re offline</Text>
-                  <Text className="text-[13px] leading-5 text-appMuted">
-                    You are currently offline. Syncing is currently disabled.
-                  </Text>
-                </View>
-              ) : null}
-              <View className="gap-2">
-                <PrimaryButton
-                  disabled={!isOnline}
-                  label="Save to Album"
-                  loading={saving}
-                  onPress={saveCurrentRecording}
-                />
-                <PrimaryButton
-                  label="Download"
-                  loading={downloading}
-                  onPress={downloadCurrentRecording}
-                  variant="secondary"
-                />
-              </View>
-            </RecordedFileCard>
-          ) : null}
-
-          {pendingUploads.length ? (
-            <Text className="mt-4 px-4 text-[13px] text-appAccent">
-              {pendingUploads.length} upload{pendingUploads.length === 1 ? '' : 's'} pending.
-            </Text>
-          ) : null}
-        </ScrollView>
+          onNotesChange={setNotes}
+          onOccurredAtChange={setOccurredAt}
+          onSelectAlbum={() => setSelectorOpen(true)}
+          onTagsTextChange={setTagsText}
+          onTitleChange={setTitle}
+          pendingFooter={
+            pendingUploads.length ? (
+              <Text className="mt-4 px-4 text-[13px] text-appAccent">
+                {pendingUploads.length} upload{pendingUploads.length === 1 ? '' : 's'} pending.
+              </Text>
+            ) : null
+          }
+          primaryAction={{
+            disabled: !isOnline,
+            label: 'Save to Album',
+            loading: saving,
+            onPress: saveCurrentRecording,
+          }}
+          occurredAt={occurredAt}
+          selectedAlbumName={selectedAlbum?.name}
+          secondaryAction={{
+            label: 'Download',
+            loading: downloading,
+            onPress: downloadCurrentRecording,
+            variant: 'secondary',
+          }}
+          tagsText={tagsText}
+          title={title}
+        />
       ) : (
         <EmptyState
           body="Create an album from the library before recording."
           title="No albums available"
         />
+      )
+      ) : (
+        <RecorderExperience
+          fileName={fileName}
+          mode="offline"
+          onBack={() => {
+            if (router.canGoBack()) {
+              router.back();
+              return;
+            }
+
+            router.replace('/');
+          }}
+          onClearDraft={() => setFileName('')}
+          onFileNameChange={setFileName}
+          onRecorded={({ recordedAt }) => {
+            setFileName(formatTimestampFileLabel(recordedAt));
+          }}
+          primaryAction={{
+            label: 'Save to Device',
+            loading: saving,
+            onPress: saveOfflineRecording,
+          }}
+        />
       )}
 
-      <Modal animationType="slide" transparent visible={selectorOpen}>
-        <View className="flex-1 items-center justify-center bg-[rgba(17,11,7,0.45)] p-4">
+      <Modal animationType="slide" transparent visible={status === 'signed-in' && selectorOpen}>
+        <View className="flex-1 items-center justify-center bg-appOverlay p-4">
           <AppCard className="w-full gap-2 bg-appBgElevated p-5">
             <Text className="mb-1 text-lg font-extrabold text-appText">Save to album</Text>
             {albums.map((album) => (
@@ -292,22 +247,6 @@ export default function RecordScreen() {
           </AppCard>
         </View>
       </Modal>
-
-      <ConfirmDialog
-        body="Are you sure you want to discard this recording?"
-        confirmLabel="Discard"
-        onCancel={() => setConfirmDiscardOpen(false)}
-        onConfirm={() => {
-          recorder.clearRecording();
-          setTitle('');
-          setOccurredAt(todayDateInputValue());
-          setTagsText('');
-          setNotes('');
-          setConfirmDiscardOpen(false);
-        }}
-        open={confirmDiscardOpen}
-        title="Discard recording?"
-      />
-    </ScreenShell>
+    </>
   );
 }

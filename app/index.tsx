@@ -16,9 +16,14 @@ import {
   getGooglePickerApiKey,
   GOOGLE_DISCOVERY,
 } from '@/constants/config';
+import { colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import type { LibraryConfig } from '@/domain/models';
-import { googleScopes } from '@/services/googleAuth';
+import {
+  googleScopes,
+  isGoogleAuthCanceled,
+  logGoogleAuthCancellation,
+} from '@/services/googleAuth';
 import { openGoogleFolderPicker, type PickedFolder } from '@/services/googlePicker';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -84,6 +89,20 @@ export default function IndexScreen() {
     }
 
     if (response.type === 'error') {
+      if (
+        isGoogleAuthCanceled({
+          code: response.params.error,
+          message: response.error?.message,
+        })
+      ) {
+        logGoogleAuthCancellation('sign-in', {
+          code: response.params.error,
+          message: response.error?.message,
+        });
+        setAuthError(undefined);
+        return;
+      }
+
       setAuthError(response.error?.message ?? 'Google sign-in did not complete.');
     }
   }, [response]);
@@ -157,7 +176,9 @@ export default function IndexScreen() {
             style={{ height: 140, width: 140 }}
           />
         </View>
-        <Text className="text-[34px] font-extrabold text-appText">{APP_NAME}</Text>
+        <Text className="text-[34px] font-extrabold text-appText" style={{ color: colors.text }}>
+          {APP_NAME}
+        </Text>
         <Text className="max-w-[420px] text-center text-base leading-6 text-appMuted">
           Your Digital Memory Collection
         </Text>
@@ -166,12 +187,12 @@ export default function IndexScreen() {
       {!signedInForSetup ? (
         <View className="mt-7 gap-4">
           {!clientId ? (
-            <Text className="text-center text-sm leading-[22px] text-[#C2563D]">
+            <Text className="text-center text-sm leading-[22px] text-appDanger">
               Add the Google web client ID from `.env.example` before signing in.
             </Text>
           ) : null}
           {error || authError ? (
-            <Text className="text-center text-sm leading-[22px] text-[#C2563D]">
+            <Text className="text-center text-sm leading-[22px] text-appDanger">
               {error ?? authError}
             </Text>
           ) : null}
@@ -189,7 +210,7 @@ export default function IndexScreen() {
           />
           <PrimaryButton
             label="Open Recorder"
-            onPress={() => router.push('/offline-record')}
+            onPress={() => router.push('/record')}
             variant="secondary"
           />
         </View>
@@ -215,7 +236,7 @@ export default function IndexScreen() {
             </View>
           ) : null}
           {!pickerApiKey || !pickerAppId ? (
-            <Text className="text-center text-sm leading-[22px] text-[#C2563D]">
+            <Text className="text-center text-sm leading-[22px] text-appDanger">
               Choosing a parent folder needs `EXPO_PUBLIC_GOOGLE_API_KEY` and
               `EXPO_PUBLIC_GOOGLE_CLOUD_PROJECT_NUMBER`.
             </Text>
@@ -240,7 +261,7 @@ export default function IndexScreen() {
           />
 
           {error || authError ? (
-            <Text className="text-center text-sm leading-[22px] text-[#C2563D]">
+            <Text className="text-center text-sm leading-[22px] text-appDanger">
               {error ?? authError}
             </Text>
           ) : null}
@@ -248,15 +269,15 @@ export default function IndexScreen() {
       )}
 
       <View className="mb-7 mt-7 flex-row flex-wrap items-center justify-center gap-1.5">
-        <Link className="text-[13px] font-semibold text-appAccent" href="/about">
+        <Link className="text-[13px] font-semibold text-appMuted" href="/about">
           About
         </Link>
         <Text className="text-[13px] text-appMuted">•</Text>
-        <Link className="text-[13px] font-semibold text-appAccent" href="/privacy-policy">
+        <Link className="text-[13px] font-semibold text-appMuted" href="/privacy-policy">
           Privacy Policy
         </Link>
         <Text className="text-[13px] text-appMuted">•</Text>
-        <Link className="text-[13px] font-semibold text-appAccent" href="/terms-of-service">
+        <Link className="text-[13px] font-semibold text-appMuted" href="/terms-of-service">
           Terms of Service
         </Link>
       </View>

@@ -3,6 +3,7 @@ import { createContext } from 'react';
 
 import type { Album, PendingUpload, RootDriveFolders, Track } from '@/domain/models';
 import { useAuth } from '@/contexts/AuthContext';
+import { isDriveScopeInsufficientError } from '@/services/driveApi';
 import { DriveRepository } from '@/services/driveRepository';
 import {
   deleteLocalFile,
@@ -39,6 +40,7 @@ type AppDataContextValue = {
   status: 'idle' | 'loading' | 'refreshing';
   isSyncing: boolean;
   error?: string;
+  requiresDriveReauth: boolean;
   refreshLibrary: (silent?: boolean) => Promise<void>;
   createAlbum: (input: CreateAlbumInput) => Promise<Album>;
   saveTrack: (input: SaveTrackInput) => Promise<Track>;
@@ -49,6 +51,7 @@ type AppDataContextValue = {
   ) => Promise<Track>;
   syncPendingUploads: () => Promise<void>;
   downloadDriveAsset: (driveUri?: string) => Promise<string | undefined>;
+  clearDriveReauthState: () => void;
 };
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -97,6 +100,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<AppDataContextValue['status']>('idle');
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string>();
+  const [requiresDriveReauth, setRequiresDriveReauth] = useState(false);
   const webDownloadUrls = useRef(new Map<string, string>());
 
   const repository = useMemo(
@@ -126,6 +130,25 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const setHandledError = useCallback((nextError: unknown, fallback: string) => {
+    const message = nextError instanceof Error ? nextError.message : fallback;
+    const needsReauth = isDriveScopeInsufficientError(nextError);
+
+    setError(
+      needsReauth
+        ? 'Google Drive access needs to be re-authorized before your library can load.'
+        : message
+    );
+    setRequiresDriveReauth(needsReauth);
+
+    return new Error(message);
+  }, []);
+
+  const clearDriveReauthState = useCallback(() => {
+    setRequiresDriveReauth(false);
+    setError(undefined);
+  }, []);
+
   const refreshLibrary = useCallback(
     async (silent = false) => {
       if (!repository || authStatus !== 'signed-in') {
@@ -144,22 +167,19 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         setRemoteAlbums(albums);
         setRootFolders(ensured);
         setError(undefined);
+        setRequiresDriveReauth(false);
         await writeLibrarySnapshot({
           albums,
           updatedAt: new Date().toISOString(),
           rootFolders: ensured,
         });
       } catch (refreshError) {
-        setError(
-          refreshError instanceof Error
-            ? refreshError.message
-            : 'Failed to refresh your Drive library.'
-        );
+        setHandledError(refreshError, 'Failed to refresh your Drive library.');
       } finally {
         setStatus('idle');
       }
     },
-    [authStatus, repository]
+    [authStatus, repository, setHandledError]
   );
 
   const syncPendingUploads = useCallback(async () => {
@@ -226,20 +246,26 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Album creation requires a network connection.');
       }
 
-      const created = await repository.createAlbum(input, rootFolders);
-      const nextAlbums = [...remoteAlbums, created].sort((a, b) =>
-        a.name.localeCompare(b.name)
-      );
-      setRemoteAlbums(nextAlbums);
-      setRootFolders((current) => current);
-      await writeLibrarySnapshot({
-        albums: nextAlbums,
-        updatedAt: new Date().toISOString(),
-        rootFolders,
-      });
-      return created;
+      try {
+        const created = await repository.createAlbum(input, rootFolders);
+        const nextAlbums = [...remoteAlbums, created].sort((a, b) =>
+          a.name.localeCompare(b.name)
+        );
+        setRemoteAlbums(nextAlbums);
+        setRootFolders((current) => current);
+        setError(undefined);
+        setRequiresDriveReauth(false);
+        await writeLibrarySnapshot({
+          albums: nextAlbums,
+          updatedAt: new Date().toISOString(),
+          rootFolders,
+        });
+        return created;
+      } catch (createError) {
+        throw setHandledError(createError, 'Failed to create album.');
+      }
     },
-    [remoteAlbums, repository, rootFolders]
+    [remoteAlbums, repository, rootFolders, setHandledError]
   );
 
   const saveTrack = useCallback(
@@ -255,19 +281,25 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
       const online = await hasInternetConnection();
       if (online) {
-        const saved = await repository.saveTrack({
-          album,
-          title: input.title,
-          recordedAt: input.recordedAt,
-          occurredAt: input.occurredAt,
-          tags: input.tags,
-          notes: input.notes,
-          imageUri: input.imageUri,
-          audioUri: input.audioUri,
-          mimeType: input.mimeType,
-        });
-        await refreshLibrary(true);
-        return saved;
+        try {
+          const saved = await repository.saveTrack({
+            album,
+            title: input.title,
+            recordedAt: input.recordedAt,
+            occurredAt: input.occurredAt,
+            tags: input.tags,
+            notes: input.notes,
+            imageUri: input.imageUri,
+            audioUri: input.audioUri,
+            mimeType: input.mimeType,
+          });
+          setError(undefined);
+          setRequiresDriveReauth(false);
+          await refreshLibrary(true);
+          return saved;
+        } catch (saveError) {
+          throw setHandledError(saveError, 'Failed to save track.');
+        }
       }
 
       if (!input.audioUri) {
@@ -275,7 +307,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       }
       throw new Error('Offline uploads are not supported in the web app.');
     },
-    [refreshLibrary, remoteAlbums, repository]
+    [refreshLibrary, remoteAlbums, repository, setHandledError]
   );
 
   const updateTrack = useCallback(
@@ -302,20 +334,26 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Track edits require a network connection.');
       }
 
-      const saved = await repository.saveTrack({
-        album,
-        track,
-        title: changes.title,
-        recordedAt: changes.recordedAt,
-        occurredAt: changes.occurredAt,
-        tags: changes.tags,
-        notes: changes.notes,
-        imageUri: changes.imageUri,
-      });
-      await refreshLibrary(true);
-      return saved;
+      try {
+        const saved = await repository.saveTrack({
+          album,
+          track,
+          title: changes.title,
+          recordedAt: changes.recordedAt,
+          occurredAt: changes.occurredAt,
+          tags: changes.tags,
+          notes: changes.notes,
+          imageUri: changes.imageUri,
+        });
+        setError(undefined);
+        setRequiresDriveReauth(false);
+        await refreshLibrary(true);
+        return saved;
+      } catch (saveError) {
+        throw setHandledError(saveError, 'Failed to update track.');
+      }
     },
-    [refreshLibrary, remoteAlbums, repository]
+    [refreshLibrary, remoteAlbums, repository, setHandledError]
   );
 
   const downloadDriveAsset = useCallback(
@@ -339,11 +377,12 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         const objectUrl = URL.createObjectURL(blob);
         webDownloadUrls.current.set(parsed.fileId, objectUrl);
         return objectUrl;
-      } catch {
+      } catch (downloadError) {
+        setHandledError(downloadError, 'Failed to download Drive file.');
         return undefined;
       }
     },
-    [repository]
+    [repository, setHandledError]
   );
 
   const value = useMemo<AppDataContextValue>(
@@ -354,14 +393,17 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       status,
       isSyncing,
       error,
+      requiresDriveReauth,
       refreshLibrary,
       createAlbum,
       saveTrack,
       updateTrack,
       syncPendingUploads,
       downloadDriveAsset,
+      clearDriveReauthState,
     }),
     [
+      clearDriveReauthState,
       createAlbum,
       downloadDriveAsset,
       error,
@@ -369,6 +411,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       pendingUploads,
       refreshLibrary,
       remoteAlbums,
+      requiresDriveReauth,
       rootFolders,
       saveTrack,
       status,
