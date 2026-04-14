@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View, useWindowDimensions } from 'react-native';
 
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { DateField } from '@/components/DateField';
@@ -67,6 +67,7 @@ type Props = {
   );
 
 export function RecorderExperience(props: Props) {
+  const { height } = useWindowDimensions();
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
   const recorder = useRecorder({
     clearDraft: props.onClearDraft,
@@ -87,6 +88,10 @@ export function RecorderExperience(props: Props) {
   const extension = extensionForMimeType(recorder.recordedMimeType);
   const hasRecordedTrack = Boolean(recorder.recordedUri && recorder.recordedAt);
   const secondaryAction = props.secondaryAction;
+  const idleMinHeight =
+    props.mode === 'library'
+      ? Math.max(height - FLOATING_NAV_HEIGHT - 96, 320)
+      : Math.max(height - 96, 320);
   const recordedContext = hasRecordedTrack
     ? {
       clearRecording: recorder.clearRecording,
@@ -100,22 +105,19 @@ export function RecorderExperience(props: Props) {
     : null;
 
   return (
-    <ScreenShell bottomNav={props.mode === 'library'} padded={props.mode === 'offline'}>
-      <ScrollView
-        contentContainerStyle={{
-          alignItems: 'stretch',
-          flexGrow: 1,
-          gap: 20,
-          paddingBottom: props.mode === 'library' ? FLOATING_NAV_HEIGHT + 28 : 28,
-        }}
-        keyboardShouldPersistTaps="handled">
+    <ScreenShell
+      bottomNav={props.mode === 'library'}
+      padded={props.mode === 'offline'}
+      scroll>
         {props.mode === 'offline' ? (
           <Pressable accessibilityRole="button" className="self-start" onPress={props.onBack}>
             <Text className="text-[32px] leading-8 text-appText">←</Text>
           </Pressable>
         ) : null}
 
-        <View className="flex-1 justify-center gap-5">
+        <View
+          className={recordedContext ? 'gap-5' : 'justify-center gap-5'}
+          style={recordedContext ? undefined : { minHeight: idleMinHeight }}>
           <View className="items-center py-7">
             <RecorderButton
               activeBackgroundClassName="bg-appRecordLiveRing"
@@ -206,7 +208,6 @@ export function RecorderExperience(props: Props) {
         </View>
 
         {props.pendingFooter}
-      </ScrollView>
 
       <ConfirmDialog
         body="Are you sure you want to discard this recording?"

@@ -11,7 +11,7 @@ module.exports = {
         appCardAlt: '#E3E3E3',
         appBorder: '#BDBDBD',
         appText: '#212121',
-        appMuted: '#757575',
+        appMuted: '#616161',
         appTextInverse: '#FFFFFF',
         appAccent: '#F9C56D',
         appAccentSoft: '#FBE1A7',

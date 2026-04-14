@@ -5,7 +5,7 @@ export const colors = {
   cardAlt: '#E3E3E3',
   border: '#BDBDBD',
   text: '#212121',
-  textMuted: '#757575',
+  textMuted: '#616161',
   textInverse: '#FFFFFF',
   accent: '#F9C56D',
   accentSoft: '#FBE1A7',
