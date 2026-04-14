@@ -210,7 +210,7 @@ export default function IndexScreen() {
           />
           <PrimaryButton
             label="Open Recorder"
-            onPress={() => router.push('/offline-record')}
+            onPress={() => router.push('/record')}
             variant="secondary"
           />
         </View>

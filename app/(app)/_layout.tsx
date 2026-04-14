@@ -1,4 +1,4 @@
-import { Redirect, Tabs } from 'expo-router';
+import { Redirect, Tabs, usePathname } from 'expo-router';
 
 import { DrivePermissionGate } from '@/components/DrivePermissionGate';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,12 +6,13 @@ import { colors } from '@/constants/theme';
 
 export default function AppLayout() {
   const { status } = useAuth();
+  const pathname = usePathname();
 
   if (status === 'loading') {
     return null;
   }
 
-  if (status !== 'signed-in') {
+  if (status !== 'signed-in' && pathname !== '/record') {
     return <Redirect href="/" />;
   }
 
@@ -30,7 +31,7 @@ export default function AppLayout() {
         <Tabs.Screen name="record" options={{ title: 'Record', tabBarLabel: 'Record' }} />
         <Tabs.Screen name="user" options={{ title: 'User', tabBarLabel: 'User' }} />
       </Tabs>
-      <DrivePermissionGate />
+      {status === 'signed-in' ? <DrivePermissionGate /> : null}
     </>
   );
 }

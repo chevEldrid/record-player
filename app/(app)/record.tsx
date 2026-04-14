@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, Text, View } from 'react-native';
 
@@ -7,8 +7,9 @@ import { EmptyState } from '@/components/EmptyState';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { RecorderExperience, type RecordedContext } from '@/components/RecorderExperience';
 import { useAppData } from '@/contexts/AppDataContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import { todayDateInputValue } from '@/utils/date';
+import { formatTimestampFileLabel, todayDateInputValue } from '@/utils/date';
 import { downloadAudioFile } from '@/utils/recording';
 import { slugify } from '@/utils/slug';
 
@@ -20,9 +21,12 @@ function parseTags(value: string) {
 }
 
 export default function RecordScreen() {
+  const router = useRouter();
   const params = useLocalSearchParams<{ albumId?: string }>();
+  const { status } = useAuth();
   const { albums, pendingUploads, saveTrack } = useAppData();
   const { isOnline } = useNetworkStatus();
+  const [fileName, setFileName] = useState('');
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | undefined>(params.albumId);
   const [title, setTitle] = useState('');
   const [occurredAt, setOccurredAt] = useState(todayDateInputValue());
@@ -32,11 +36,15 @@ export default function RecordScreen() {
   const [downloading, setDownloading] = useState(false);
   const [selectorOpen, setSelectorOpen] = useState(false);
 
+  if (status === 'loading') {
+    return null;
+  }
+
   useEffect(() => {
-    if (!selectedAlbumId && albums[0]) {
+    if (status === 'signed-in' && !selectedAlbumId && albums[0]) {
       setSelectedAlbumId(albums[0].id);
     }
-  }, [albums, selectedAlbumId]);
+  }, [albums, selectedAlbumId, status]);
 
   const selectedAlbum = useMemo(
     () => albums.find((album) => album.id === selectedAlbumId),
@@ -91,6 +99,36 @@ export default function RecordScreen() {
     }
   }
 
+  async function saveOfflineRecording({
+    clearRecording,
+    extension,
+    fileName: defaultFileName,
+    recordedMimeType,
+    recordedUri,
+  }: Pick<RecordedContext, 'clearRecording' | 'extension' | 'fileName' | 'recordedMimeType' | 'recordedUri'>) {
+    setSaving(true);
+    try {
+      const resolvedName = slugify(fileName.trim()) || defaultFileName;
+
+      await downloadAudioFile(recordedUri, `${resolvedName}.${extension}`);
+      clearRecording();
+      setFileName('');
+      Alert.alert(
+        'Saved to device',
+        recordedMimeType === 'audio/mpeg'
+          ? 'The recording was downloaded to this device.'
+          : `The recording was downloaded as .${extension}. Browser recording here does not produce a true MP3.`
+      );
+    } catch (error) {
+      Alert.alert(
+        'Could not save',
+        error instanceof Error ? error.message : 'Saving the recording to your device failed.'
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function downloadCurrentRecording({
     extension,
     fileName,
@@ -114,7 +152,8 @@ export default function RecordScreen() {
 
   return (
     <>
-      {albums.length ? (
+      {status === 'signed-in' ? (
+        albums.length ? (
         <RecorderExperience
           isOnline={isOnline}
           mode="library"
@@ -159,9 +198,33 @@ export default function RecordScreen() {
           body="Create an album from the library before recording."
           title="No albums available"
         />
+      )
+      ) : (
+        <RecorderExperience
+          fileName={fileName}
+          mode="offline"
+          onBack={() => {
+            if (router.canGoBack()) {
+              router.back();
+              return;
+            }
+
+            router.replace('/');
+          }}
+          onClearDraft={() => setFileName('')}
+          onFileNameChange={setFileName}
+          onRecorded={({ recordedAt }) => {
+            setFileName(formatTimestampFileLabel(recordedAt));
+          }}
+          primaryAction={{
+            label: 'Save to Device',
+            loading: saving,
+            onPress: saveOfflineRecording,
+          }}
+        />
       )}
 
-      <Modal animationType="slide" transparent visible={selectorOpen}>
+      <Modal animationType="slide" transparent visible={status === 'signed-in' && selectorOpen}>
         <View className="flex-1 items-center justify-center bg-appOverlay p-4">
           <AppCard className="w-full gap-2 bg-appBgElevated p-5">
             <Text className="mb-1 text-lg font-extrabold text-appText">Save to album</Text>
