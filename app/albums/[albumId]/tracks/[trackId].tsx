@@ -161,8 +161,8 @@ export default function TrackDetailsScreen() {
       <Pressable className="relative mb-5 self-center" onPress={togglePlayback}>
         <DriveImage label={currentTrack.title} size={180} uri={imageUri} />
         <View className="absolute inset-0 items-center justify-center">
-          <View className="h-[62px] w-[62px] items-center justify-center rounded-full bg-[rgba(33,26,20,0.24)]">
-            <Text className="ml-1 text-2xl font-bold text-white">
+          <View className="h-[62px] w-[62px] items-center justify-center rounded-full bg-appMediaOverlay">
+            <Text className="ml-1 text-2xl font-bold text-appTextInverse">
               {isPlaying ? 'II' : '▶'}
             </Text>
           </View>

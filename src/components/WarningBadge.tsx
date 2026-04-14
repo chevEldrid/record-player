@@ -13,8 +13,8 @@ const warningCopy: Record<WarningCode, string> = {
 
 export function WarningBadge({ warning }: { warning: WarningCode }) {
   return (
-    <View className="self-start rounded-full border border-[#F2C88A] bg-[#FFF2DF] px-2.5 py-1.5">
-      <Text className="text-xs font-semibold text-[#B86A16]">{warningCopy[warning]}</Text>
+    <View className="self-start rounded-full border border-appWarningBorder bg-appWarningBg px-2.5 py-1.5">
+      <Text className="text-xs font-semibold text-appWarning">{warningCopy[warning]}</Text>
     </View>
   );
 }

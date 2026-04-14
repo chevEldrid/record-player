@@ -17,7 +17,7 @@ export function TrackListItem({
       className="flex-row items-start gap-4"
       style={({ pressed }) => ({ opacity: pressed ? 0.92 : 1 })}>
       <View className="w-4 self-stretch items-center">
-        <View className="mt-[18px] h-3.5 w-3.5 rounded-full bg-appAccent" />
+        <View className="mt-[18px] h-3.5 w-3.5 rounded-full bg-appMuted" />
       </View>
       <View className="flex-1 gap-1.5 rounded-appLg border border-appBorder bg-appCard p-4">
         <Text className="text-base font-bold text-appText">{track.title}</Text>

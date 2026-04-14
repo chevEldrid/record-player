@@ -35,10 +35,10 @@ export function PrimaryButton({
         transform: [{ scale: pressed && !disabled && !loading ? 0.985 : 1 }],
       })}>
       {loading ? (
-        <ActivityIndicator color={variant === 'secondary' ? colors.text : '#FFFFFF'} />
+        <ActivityIndicator color={variant === 'secondary' ? colors.text : colors.textInverse} />
       ) : (
         <Text
-          className={`text-base font-bold ${variant === 'secondary' ? 'text-appText' : 'text-white'}`}>
+          className={`text-base font-bold ${variant === 'secondary' ? 'text-appText' : 'text-appTextInverse'}`}>
           {label}
         </Text>
       )}

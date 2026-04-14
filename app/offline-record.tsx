@@ -101,14 +101,14 @@ export default function OfflineRecordScreen() {
         <View className="flex-1 justify-center gap-5">
           <View className="items-center py-7">
             <RecorderButton
-              activeBackgroundClassName="bg-[#F2CEC0]"
-              activeCoreClassName="bg-[#C9563B]"
+              activeBackgroundClassName="bg-appRecordLiveRing"
+              activeCoreClassName="bg-appRecordCore"
               audioLevel={recorder.audioLevel}
-              coreClassName="h-[78px] w-[78px] rounded-full bg-appText"
+              coreClassName="h-[78px] w-[78px] rounded-full bg-appRecordCore"
               disabled={recorder.hasRecordedAudio && !recorder.isRecording}
               isLive={recorder.isRecording}
               onPress={recorder.isRecording ? recorder.stopRecording : handleStartRecording}
-              outerClassName="h-[148px] w-[148px] items-center justify-center rounded-full bg-[#F7E8DB]"
+              outerClassName="h-[148px] w-[148px] items-center justify-center rounded-full bg-appRecordRing"
             />
           </View>
 

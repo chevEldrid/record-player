@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 
 import { FloatingBottomNav, FLOATING_NAV_HEIGHT } from '@/components/FloatingBottomNav';
+import { colors } from '@/constants/theme';
 
 type Props = PropsWithChildren<{
   scroll?: boolean;
@@ -31,20 +32,20 @@ export function ScreenShell({
 
   const content = (
     <View
-      className={`flex-1 bg-appBg ${padded ? 'px-4 pt-4' : ''}`}
+      className={`${scroll ? '' : 'flex-1 '}bg-appBg ${padded ? 'px-4 pt-4' : ''}`}
       style={bottomNav && !extendBehindBottomNav ? { paddingBottom: FLOATING_NAV_HEIGHT + 20 } : undefined}>
       {children}
     </View>
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-appBg" edges={['left', 'right', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-appBg" edges={['top', 'left', 'right', 'bottom']}>
       <View className="flex-1 bg-appBg">
         {scroll ? (
           <ScrollView
             ref={scrollRef}
             className="flex-1 bg-appBg"
-            contentContainerStyle={{ backgroundColor: '#FFBD59', flexGrow: 1 }}
+            contentContainerStyle={{ backgroundColor: colors.background, flexGrow: 1 }}
             keyboardShouldPersistTaps="handled">
             {content}
           </ScrollView>

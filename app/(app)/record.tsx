@@ -183,14 +183,14 @@ export default function RecordScreen() {
           keyboardShouldPersistTaps="handled">
           <View className="items-center px-4 py-7">
             <RecorderButton
-              activeBackgroundClassName="bg-[#4B1B16]"
-              activeCoreClassName="rounded-[28px]"
+              activeBackgroundClassName="bg-appRecordLiveRing"
+              activeCoreClassName="bg-appRecordCore"
               audioLevel={recorder.audioLevel}
-              coreClassName="h-24 w-24 rounded-full bg-[#D3372F]"
+              coreClassName="h-[78px] w-[78px] rounded-full bg-appRecordCore"
               disabled={recorder.hasRecordedAudio && !recorder.isRecording}
               isLive={recorder.isRecording}
               onPress={recorder.isRecording ? recorder.stopRecording : handleStartRecording}
-              outerClassName="h-[188px] w-[188px] items-center justify-center rounded-full bg-[#351A16]"
+              outerClassName="h-[148px] w-[148px] items-center justify-center rounded-full bg-appRecordRing"
             />
           </View>
 
@@ -270,7 +270,7 @@ export default function RecordScreen() {
       )}
 
       <Modal animationType="slide" transparent visible={selectorOpen}>
-        <View className="flex-1 items-center justify-center bg-[rgba(17,11,7,0.45)] p-4">
+        <View className="flex-1 items-center justify-center bg-appOverlay p-4">
           <AppCard className="w-full gap-2 bg-appBgElevated p-5">
             <Text className="mb-1 text-lg font-extrabold text-appText">Save to album</Text>
             {albums.map((album) => (
